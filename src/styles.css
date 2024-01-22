@@ -1,0 +1,190 @@
+/* make background image cover entire window */
+html{
+    background: url('../public/oldStuff/nicesky.avif') no-repeat center center fixed;
+    /* background-repeat: no-repeat; */
+    /* background-position: center center center fixed; */
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+
+
+}
+.smallOnes{
+    position: fixed;
+    /* position: absolute; */
+    top: 0%; 
+    left: 0%; 
+    /* right: 10% */
+}
+
+body{
+    margin: 0; 
+    text-align: center;
+
+}
+
+.playerContainer{
+    position: fixed;
+    top: 0%;
+    padding-top: 1000%;
+    height: 100%;
+    width: 100%;
+    background-image: url('../public/lilguy.jpg');
+    background-repeat: repeat;
+    position: absolute;
+
+    display: grid;
+    /* grid-template-columns: repeat(3, 1fr); */
+
+    background-position-x: 50%;
+    animation-delay: 0s;
+    animation-duration: 10s;
+    animation-name: panoramic;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+    animation-fill-mode: both;
+    /* width: 444px; */
+    /* height: 200px; */
+    overflow: hidden;
+    margin: 0 auto;
+    will-change: background-position-x;
+}
+
+.bannerWrapper{
+    top: 0%;
+}
+
+
+/* navbar div */
+#navWrapper{
+
+}
+.oleList{
+    /* z-index: -3; */
+}
+/* header */
+h1{
+    padding: 2%;
+    font-family: Sniglet-Bold;
+    color: #F3E7FA;
+    -webkit-text-stroke: 1px black;
+
+}
+
+p{
+    font-family: Sniglet-Bold;
+}
+
+.hellspawn{
+    max-width: 10%;
+    max-height: 10%;
+}
+
+
+
+h4{
+    font-family: Sniglet-Bold;
+    color: #F3E7FA;
+    -webkit-text-stroke: 1px black;
+}
+ul{
+    font-family: Sniglet-Bold;
+    font-kerning: normal;
+}
+/* menu div this is the prominent display*/
+.menus{
+
+}
+
+/* container, child of menu */
+.container{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+
+}
+/* box, child of container */
+.box{
+
+}
+
+.scooby{
+    /* position: fixed;
+    top: 0%; */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+
+.box{
+    align-content: center;
+}
+
+/* checkout main div */
+.checkout{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+
+}
+
+/* checkout child div */
+.meals{
+  
+}
+
+/* checkout child div */
+.gList{
+
+}
+
+/* meals h1 id el */
+#feast{
+    
+
+}
+
+/* grocery list id el */
+#todo{
+
+}
+
+
+
+/* buttons */
+button{
+    text-align: center;
+    background-color: #F3E7FA;
+}
+
+@font-face {
+    font-family: 'Sniglet-bold';
+    src: url('../public/sniglet webfonts/Sniglet-webfont.eot'),
+        url('../public/sniglet webfonts/Sniglet-webfont.woff') format('woff'),
+        url('../public/sniglet webfonts/Sniglet-webfont.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+  }
+
+  @keyframes panoramic {
+    100% {
+      background-position-x: 0%;
+    }
+    50% {
+      background-position-x: 100%;
+    }
+    100% {
+      background-position-x: 0%;
+    }
+  }
+  .player{
+    /* display:; */
+    /* visibility: hidden; */
+    position: fixed;
+    bottom: 0%;
+    max-width: 0%;
+  }
+
+  .viddy{
+    max-width: 60%;
+    max-height: 60%;
+  }
