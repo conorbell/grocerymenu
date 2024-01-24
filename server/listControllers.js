@@ -24,7 +24,6 @@ listController.getList = async (req, res, next) => {
 listController.addList = async (req, res, next) => {
   try {
     const arr = req.body.data;
-    console.log('arr', arr.flat(Infinity));
     const groceries = arr.flat(Infinity);
 
     const listDoc = await GroceryModel.create({

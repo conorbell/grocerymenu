@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
-import Breakfast from './Breakfast';
-import Lunch from './Lunch';
-import Dinner from './Dinner';
-import Checkout from './Checkout';
+import Breakfast from './pages/menus/Breakfast';
+import Lunch from './pages/menus/Lunch';
+import Dinner from './pages/menus/Dinner';
+import Checkout from './pages/menus/Checkout';
 import Main from './main';
-import Hell from './Hell';
+import Hell from './pages/menus/OldLists';
 import newcss from './new.css';
 
 const App = (props) => {
@@ -37,11 +37,6 @@ const App = (props) => {
         }
       });
     }
-  };
-
-  //extract form data
-  const handleSumbit = (e) => {
-    console.log('button e', e);
   };
 
   //recieve data from input

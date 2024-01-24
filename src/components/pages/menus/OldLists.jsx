@@ -1,7 +1,7 @@
 import React from "react";
 import { useRef, useEffect, useState } from "react";
 
-const Hell = (props) =>{
+const OldLists = (props) =>{
   const [groceryLis, setGroceryLis] = useState([])
   const [selectedDate, setDate] = useState(null);
 
@@ -71,4 +71,4 @@ const Hell = (props) =>{
   )
  
 }
-export default Hell; 
+export default OldLists; 
