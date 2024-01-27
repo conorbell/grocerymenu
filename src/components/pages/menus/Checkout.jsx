@@ -1,6 +1,11 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import {useList} from '../../functions/ListContext'
+
+//api functions 
+import { saveMeals } from '../../functions/saveMeals';
+import { saveGroceries } from '../../functions/saveGroceries';
+
 const Checkout = (props) => {
   const {groceryList, mealList} = useList()
 
@@ -45,38 +50,9 @@ const Checkout = (props) => {
   //     .then((data) => console.log('data', data));
   // };
 
-  const saveGroceries = (groceries) =>{
-    console.log('groceries', groceries)
-
-    fetch('/api/list', {
-      method: 'POST',
-      headers: {
-        'Content-type': 'application/json',
-      },
-      body: JSON.stringify(),
-    })
-      .then((r) => r.json())
-
-      .then((data) => console.log('data', data));
 
 
-  }
-
-  const saveMeals = () =>{
-
-    fetch('/api/list', {
-      method: 'POST',
-      headers: {
-        'Content-type': 'application/json',
-      },
-      body: JSON.stringify(),
-    })
-      .then((r) => r.json())
-
-      .then((data) => console.log('data', data));
-
-
-  }
+ 
 
   const handleSaveGroceries = () =>{
     saveGroceries(groceryList);

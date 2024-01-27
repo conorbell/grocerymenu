@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom"
-
+import React from "react"
 export const UserLayout = () =>{
     return(
         <div className="user-layout">
