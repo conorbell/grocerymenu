@@ -62,4 +62,8 @@ mealsController.getDinner = (req, res, next) => {
     return next(err);
   }
 };
+
+// mealsController.addMeals = (req, res, next) => {
+
+// }
 module.exports = mealsController;

@@ -1,48 +1,43 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
+import { useList } from '../../functions/ListContext';
 // import path from 'path';
 
-const Breakfast = (props) => {
-  const [breakfast, setBreakfast] = useState();
+export const Breakfast = (props) => {
+  const [breakfasts, setBreakfasts] = useState([]);
+  const {addToGroceryList, addToMealList} = useList();
 
-  let food;
+
 
   useEffect(() => {
     fetch('/api/breakfast')
       .then((data) => data.json())
-      .then((food) => setBreakfast(food))
+      .then((food) => 
+        setBreakfasts(food)
+      )
       .catch((err) => {
         console.log(err);
       });
   }, []);
 
-  console.log('breakfast', breakfast);
-  if (Array.isArray(breakfast)) {
-    food = breakfast.map((el, i) => {
-      // console.log('element', el);
-      console.log('img', el.img);
-      //image path is contianed in el.img
-      return (
-        <div key={`breakfast${i}`}className="box">
-          <img src={el.img} alt="hahahahah it broken welcome to hell buddy!" />
-          <h4>{el.title}</h4>
-          <button 
-            onClick={() => {
-              props.setMealList([...props.mealList, el.title]);
-              props.addGroceryList(el.ingredients);
-            }}
-          >
-            <p>{el.ingredients.join(', \n ')}</p>
-          </button>
-        </div>
-      );
-    });
+  const handleButtonClick = (title, ingredients) => {
+    addToGroceryList(ingredients);
+    addToMealList(title);
   }
 
-  return (
-    <div className="container" id="breakfast">
-      {food}
+
+
+  return(
+    <div className='container' id='breakfast'>
+     {breakfasts.length > 0 && breakfasts.map((el, i) =>(
+      <div key={`breakfast${i}`}> 
+      <h4>{el.title}</h4>
+      <button onClick={() => handleButtonClick(el.title, el.ingredients)}>
+        <p>{el.ingredients.join(', ')}</p>
+      </button>
+      </div>
+     ))}
     </div>
-  );
+  )
 };
 export default Breakfast;
