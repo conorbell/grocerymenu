@@ -12,13 +12,13 @@
       "category": "dinner",
       "img": "src/food/ftacos.png",
       "ingredients": [
-        ["tilapia"],
-        ["small tortillas"],
-        ["pico de gallo"],
-        ["small milk"],
-        ["shredded red and green cabbage"],
-        ["chipotle peppers sauce thin"],
-        ["sour cream"]
+        "tilapia",
+        "small tortillas",
+        "pico de gallo",
+        "small milk",
+        "shredded red and green cabbage",
+        "chipotle peppers sauce thin",
+        "sour cream"
       ]
     },
     {

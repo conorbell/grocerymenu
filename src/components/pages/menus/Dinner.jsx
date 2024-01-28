@@ -1,13 +1,12 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
-// import data from '../../server/data/meals.json'
+import { useList } from '../../functions/ListContext';
 
 
 const Dinner = (props) => {
-  
-  const [dinner, setDinner] = useState();
-  let food; 
-  let path; 
+  const [dinner, setDinner] = useState([]);
+  const {addToGroceryList, addToMealList} = useList();
+ 
 
   useEffect(() => {
     fetch('/api/dinner')
@@ -18,28 +17,26 @@ const Dinner = (props) => {
       });
   }, []);
   
-  if(Array.isArray(dinner)){
-    food = dinner.map((el) =>{
-      console.log('el', el.img);
+  const handleButtonClick = (title, ingredients) => {
+   ingredients = ingredients.flat(Infinity)
+    console.log('ingredients', ingredients)
 
-      let pic = JSON.stringify(el.img);
-      console.log('pic', pic);
+    addToGroceryList(ingredients);
+    addToMealList(title);
+  }
 
-      return( <div className='box'>
-        <img src={el.img} alt='hahahahah it broken welcome to hell buddy!' />
-        <h4>{el.title}</h4>
-        <button onClick={() =>{props.setMealList([...props.mealList, el.title])
-      props.addGroceryList(el.ingredients)
-      }}><p>{el.ingredients.join(', \n ' )}</p></button> 
+  return(
+    <div className='container' id='dinner'>
+     {dinner.length > 0 && dinner.map((el, i) =>(
+      <div key={`dinner${i}`}> 
+      <h4>{el.title}</h4>
+      <button onClick={() => handleButtonClick(el.title, el.ingredients)}>
+        <p>{el.ingredients.join(', ')}</p>
+      </button>
       </div>
-      )
-    })
-
-  return (
-    <div className='container'>{food}</div>
-
-    
+     ))}
+    </div>
   )
 };
-}
+
 export default Dinner;
