@@ -66,7 +66,7 @@ const Checkout = (props) => {
       </div>
      ))}
      <button onClick={() => downloadMeals()}>Download Meals</button>
-     <button onClick={() => handleSaveMeals()}>Save Meals</button>
+     {/* <button onClick={() => handleSaveMeals()}>Save Meals</button> */}
 
       </div>
 
@@ -78,7 +78,7 @@ const Checkout = (props) => {
       </div>
      ))}
      <button onClick={() => downloadGroceries()}>Download Groceries</button>
-     <button onClick={() => handleSaveGroceries()}>Save Groceries</button>
+     {/* <button onClick={() => handleSaveGroceries()}>Save Groceries</button> */}
       </div>
      
       
