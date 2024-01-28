@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import {useList} from '../../functions/ListContext'
+import { useUser } from '../../functions/userContext';
 
 //api functions 
 import { saveMeals } from '../../functions/saveMeals';
@@ -8,13 +9,12 @@ import { saveGroceries } from '../../functions/saveGroceries';
 
 const Checkout = (props) => {
   const {groceryList, mealList} = useList()
-
-  console.log('groceryList', groceryList);
-  console.log('mealList', mealList);
+  
+  // const {validUser} = useUser()
+  // console.log('validUser', validUser)
 
 
   const downloadList = (data, filename) => {
-    console.log('data', data)
     const content = data.map(item => JSON.stringify(item)).join('\n');
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -28,39 +28,22 @@ const Checkout = (props) => {
   };
 
    
+  const handleSaveGroceries = async () =>{
 
-  // const listHandler = (foods) => {
-  //   // console.log('test test', foods);
-  //   const obj = {
-  //     data: mongoList,
-  //   };
-  //   console.log('json stringified obj', JSON.stringify(obj));
-  //   // console.log('stringified foods', JSON.stringify(foods[0]));
-  //   fetch('/api/list', {
-  //     method: 'POST',
-  //     headers: {
-  //       'Content-type': 'application/json',
-  //     },
-  //     // foods.map((el) =>{
-  //     body: JSON.stringify(obj),
-  //     // })
-  //   })
-  //     .then((r) => r.json())
-
-  //     .then((data) => console.log('data', data));
-  // };
+      const groceries = await saveGroceries(groceryList);
+      console.log('groceries', groceries)
 
 
-
- 
-
-  const handleSaveGroceries = () =>{
-    saveGroceries(groceryList);
+    
 
   }
 
-  const handleSaveMeals = () => {
-    saveMeals(mealList)
+  const handleSaveMeals = async () => {
+
+      const meals = await saveMeals(mealList)
+      console.log('meals', meals)
+
+    
 
   }
 
@@ -98,12 +81,8 @@ const Checkout = (props) => {
      <button onClick={() => handleSaveGroceries()}>Save Groceries</button>
       </div>
      
-      {/* <form method="post">
-        <input type="submit" onClick={(event) => listHandler(event)} />
-      </form> */}
+      
     </div>
   );
 };
 export default Checkout;
-{/* <button onClick={() => listHandler()}>Save Meals</button>
-<button onClick={() => listHandler()}>Save GroceryList</button> */}

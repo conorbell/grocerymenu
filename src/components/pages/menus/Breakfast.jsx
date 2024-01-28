@@ -1,7 +1,6 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useList } from '../../functions/ListContext';
-// import path from 'path';
 
 export const Breakfast = (props) => {
   const [breakfasts, setBreakfasts] = useState([]);

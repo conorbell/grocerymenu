@@ -1,4 +1,4 @@
-const { GroceryModel, Meals } = require('./models');
+const { GroceryModel, MealList } = require('./models');
 const path = require('path');
 const meals = path.join(__dirname, 'data/meals.json');
 
@@ -34,6 +34,19 @@ listController.addList = async (req, res, next) => {
     return next();
   } catch (err) {
     return next(err);
+  }
+};
+
+listController.addMealList = async (req, res, next) => {
+  try {
+    console.log('addMealList', req.body);
+    const mealListDoc = await MealList.create({
+      meals: req.body,
+    });
+    res.locals.mealList = mealListDoc;
+    return next();
+  } catch (error) {
+    return next(error);
   }
 };
 
