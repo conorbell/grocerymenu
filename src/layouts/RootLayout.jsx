@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom"
 import React from "react"
-import useSound from "use-sound"
+import {useSound} from "use-sound"
 import Al from '../../public/hoo-ah-a.mp3'
 import fiya from '../../public/dickfire.mp3'
 
