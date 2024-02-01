@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
-import { useList } from '../../functions/ListContext';
+import { useList } from '../../functions/ListContextWrapper';
 
 export const Breakfast = (props) => {
   const [breakfasts, setBreakfasts] = useState([]);

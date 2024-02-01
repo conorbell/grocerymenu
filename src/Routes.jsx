@@ -18,7 +18,7 @@ import { CreateMeal } from "./components/CreateMeal"
 //error boundary 
 import { ErrorBoundary } from "./CustomErrorBoundary"
 //Providers
-import { ListProvider } from "./components/functions/ListContext"
+import { ListProvider } from "./components/functions/ListContextWrapper"
 // import { UserProvider } from "./components/functions/userContext"
 //layouts
 import { RootLayout } from "./layouts/RootLayout"
