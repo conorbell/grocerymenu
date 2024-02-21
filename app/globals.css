@@ -2,11 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+@font-face {
+  font-family: 'Sniglet-bold';
+  src: url('../public/static/fonts/sniglet webfonts/Sniglet-webfont.eot'),
+      url('../public/static/fonts/sniglet webfonts/Sniglet-webfont.woff') format('woff'),
+      url('../public/static/fonts/sniglet webfonts/Sniglet-webfont.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
 }
+
+/* :root {
+
+} */
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -18,12 +25,40 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  margin: 0; 
+  padding: 0; 
+  text-align: center;
+  height: 100vh; 
+  width: 100wh;
+
+  background-image: url('../public/static/images/nicesky.avif');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+ 
+}
+
+.ingredientsButton{
+  background-color: #F3E7FA;
+  border-radius: 100px;
+  text-align: center;
+  word-wrap: break-word;
+}
+
+.ingredientsText{
+  color: black;
+}
+
+.navButton{
+  font-size: 1.4em; 
+  transition: font-size 0.3s ease-in-out;
+}
+
+.navButton:hover{
+  font-size: 1.3em;
 }
 
 @layer utilities {
