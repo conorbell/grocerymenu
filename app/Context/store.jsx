@@ -6,14 +6,10 @@ const ListContext = createContext();
 export const ListProvider = ({ children }) => {
   const [mealList, setMealList] = useState([]);
   const [groceryList, setGroceryList] = useState([]);
-  console.log(
-    'context Meals', mealList
-  )
 
   const addToMealList = (meal) => {
     setMealList((prevList) => [...prevList, meal]);
   };
-  
 
   const extractQuantity = (ingredient) => {
     if (typeof ingredient === 'string') {
@@ -49,7 +45,6 @@ export const ListProvider = ({ children }) => {
     });
   };
 
-
   const value = {
     mealList,
     groceryList,
@@ -68,4 +63,3 @@ export const useList = () => {
   }
   return context;
 };
-

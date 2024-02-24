@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+
+
 @font-face {
   font-family: 'Sniglet-bold';
   src: url('../public/static/fonts/sniglet webfonts/Sniglet-webfont.eot'),
@@ -10,6 +12,9 @@
   font-weight: bold;
   font-style: normal;
 }
+
+
+
 
 /* :root {
 

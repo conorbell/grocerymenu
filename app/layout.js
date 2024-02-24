@@ -11,9 +11,9 @@ export const metadata = {
   description: 'Number 1 Honda Dearlership In The World',
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang='en'>
       <body className={inter.className}>
         <ListProvider>
           <Navigation />
