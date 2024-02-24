@@ -3,7 +3,6 @@ import { MealDirectory } from '@/models/schema';
 import { NextResponse } from 'next/server';
 
 export const GET = async (request) => {
-  await connectMongoDB();
   const meals = await MealDirectory.find();
   // console.log('meals', meals);
   return NextResponse.json({ meals: meals });
