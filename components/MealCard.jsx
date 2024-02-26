@@ -13,15 +13,12 @@ export default function MealCard(props) {
     const fetchMeals = async () => {
       try {
         const mealsData = await getMealDirectory();
-        console.log('mealsData', mealsData.meals);
         const mealsArr = mealsData.meals.filter((meal) => {
           return meal.category === category;
         });
-        console.log(mealsArr);
         setMeal(mealsArr);
-        console.log('meals on wheels', mealsData);
       } catch (error) {
-        console.error('Error fetching meals:', error);
+        console.log('error', error);
       }
     };
 
