@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className=''>
       <div className='grid place-content-center mt-16 '>
-        <h1 className='mb-20 text-[2em]'>Chef's Selection</h1>
+        <h1 className='mb-20 text-[2em]'>Chef&apos;s Selection</h1>
         <Image
           className='mt-10'
           loading='lazy'
