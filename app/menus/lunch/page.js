@@ -1,4 +1,5 @@
 import MealCard from '@/components/MealCard';
+import CreateMeal from '../createMeal/page';
 
 export default async function Lunch() {
   return (

@@ -2,7 +2,6 @@
 import { useList } from '@/app/Context/store';
 
 export const GetLists = () => {
-  console.log('hello');
   const { groceryList, mealList } = useList();
 
   return (

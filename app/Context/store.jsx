@@ -20,7 +20,6 @@ export const ListProvider = ({ children }) => {
   };
 
   const addToGroceryList = (ingredients) => {
-    console.log('ingred', ingredients);
     setGroceryList((prevList) => {
       const updatedList = [...prevList];
 

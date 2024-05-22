@@ -1,4 +1,5 @@
 import MealCard from '@/components/MealCard';
+import supabase from '@/utils/supabase';
 
 export default async function Dinner() {
   return (

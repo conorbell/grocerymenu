@@ -4,6 +4,9 @@ const nextConfig = {
   // experimental: {
   //   serverActions: true,
   // },
+  images: {
+    domains: [process.env.NEXT_PUBLIC_SUPABASE_URL.replace('https://', '')],
+  },
   webpack(config, options) {
     config.module.rules.push({
       test: /\.(mp3)$/,

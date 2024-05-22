@@ -12,14 +12,15 @@ export const AddGroceryButton = ({ meal }) => {
     addToMealList(title);
   };
 
+  console.log('button meal', meal);
+
   return (
     <>
       <button
-        className='btn bg-slate-400 text-white btn-square w-auto h-auto'
-        onClick={() => handleButtonClick(meal.title, meal.ingredients)}
+        className='btn  text-black btn-square w-auto h-auto'
+        onClick={() => handleButtonClick()}
       >
-        {''}
-        {meal.title}
+        Add to lists
       </button>
     </>
   );
