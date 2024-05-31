@@ -25,7 +25,7 @@ const formSchema = z.object({
   recipeLink: z.string().url({
     message: 'Must be a valid URL.',
   }),
-  file: z.instanceof(FileList).optional() || z.string().url(),
+  file: typeof window === 'undefined' ? z.any() : z.instanceof(FileList),
   ingredients: z
     .array(
       z.object({
