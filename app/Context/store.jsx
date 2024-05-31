@@ -8,34 +8,41 @@ export const ListProvider = ({ children }) => {
   const [groceryList, setGroceryList] = useState([]);
 
   const addToMealList = (meal) => {
+    console.log('meal context', meal);
     setMealList((prevList) => [...prevList, meal]);
   };
 
-  const extractQuantity = (ingredient) => {
-    if (typeof ingredient === 'string') {
-      const match = ingredient.match(/\d+/);
-      return match ? parseInt(match[0], 10) : 1;
-    }
-    return 1; // Default to 1 if not a string
-  };
-
   const addToGroceryList = (ingredients) => {
+    // console.log('set ingredients', ingredients);
     setGroceryList((prevList) => {
       const updatedList = [...prevList];
 
+      // console.log('updatedList', updatedList);
+
+      // for (const [quantity, item] of ingredients) {
+      //   console.log('test quant', quantity);
+      //   console.log('test item', item);
+      // }
+
       ingredients.forEach((ingredient) => {
+        console.log('context ingredients', ingredient);
+
+        const { item: name } = ingredient.item;
+        console.log('context name', name);
+        const { quantity: quantity } = ingredient.item;
+        console.log('context quantity', quantity);
         const existingIngredient = updatedList.find(
-          (item) => item.name === ingredient
+          (item) => item.name === name
         );
 
         if (existingIngredient) {
           // Increment the quantity if the ingredient already exists
-          existingIngredient.quantity += extractQuantity(ingredient);
+          existingIngredient.quantity++;
         } else {
           // Add the ingredient with quantity from the extracted number or default to 1
           updatedList.push({
-            name: ingredient,
-            quantity: extractQuantity(ingredient),
+            name: name,
+            quantity: 1,
           });
         }
       });

@@ -1,10 +1,10 @@
 'use client';
-import { FormEvent, useState } from 'react';
-import supabase from '@/utils/supabase';
-import Form from '@/components/Form';
-import { ListProvider, useList } from '@/app/Context/store';
+import { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useList } from '@/app/Context/store';
 
 export default function CreateMeal() {
+  const supabase = createClient();
   const { groceryList, addToGroceryList, addToMealList } = useList();
   const [ingredientFields, setIngredientFields] = useState([]);
   const [title, setTitle] = useState('');
@@ -30,16 +30,8 @@ export default function CreateMeal() {
     const quant = formData.getAll('quant');
     const image = formData.get('image');
     const mealType = formData.get('meal_type').toLowerCase();
-    console.log('mealType', mealType);
-    // console.log('chef', chef);
-    // console.log('name', name);
-    // console.log('ingredients', ingredients);
-    // console.log('quant', quant);
-    // console.log('image', image);
-    const imageName = image.name;
 
-    // addToGroceryList(ingredients);
-    // addToMealList(name);
+    const imageName = image.name;
 
     try {
       //get chef id
@@ -54,11 +46,7 @@ export default function CreateMeal() {
       }
 
       const [{ id: chefId }] = [...chefData];
-      console.log('data', chefId);
 
-      console.log('image', image);
-      console.log('name', imageName);
-      //upload image to supabase buckets
       const { data: imageData, error: imageError } = await supabase.storage
         .from('meals')
         .upload(`${imageName}`, image);
@@ -67,7 +55,6 @@ export default function CreateMeal() {
         .from('meals')
         .getPublicUrl(`${imageName}`);
 
-      console.log('imageUrlObj', imageUrlObj);
       const { publicUrl: imageUrl } = imageUrlObj.data;
 
       console.log('imageUrl', imageUrl);
@@ -78,7 +65,6 @@ export default function CreateMeal() {
         .select('*')
         .eq('meal_name', name);
 
-      console.log('mealCheckData', mealCheckData);
       if (!mealCheckData) {
         const { data: mealData, error: mealDataError } = await supabase
           .from('meals')
@@ -91,9 +77,6 @@ export default function CreateMeal() {
             },
           ])
           .select();
-
-        console.log('mealData', mealData);
-        console.log('error', mealDataError);
       }
 
       //insert into meals

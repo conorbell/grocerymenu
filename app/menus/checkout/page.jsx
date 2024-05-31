@@ -1,13 +1,22 @@
 import { GetLists } from '@/components/GetLists';
-
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 export default function Checkout() {
   return (
     <>
-      <div className="grid place-content-center font-bold text-2xl mt-24 text-white ">
-        <h1>Checkout</h1>
-        <div className="bg-white">
-          <GetLists />
-        </div>
+      <div className='flex justify-center font-bold text-2xl mt-24 '>
+        <Card className='bg-transparent'>
+          <CardHeader className='items-center'>Checkout</CardHeader>
+          <CardContent>
+            <GetLists />
+          </CardContent>
+        </Card>
       </div>
     </>
   );

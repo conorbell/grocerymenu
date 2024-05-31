@@ -1,6 +1,8 @@
 import { Inter } from 'next/font/google';
 import { Navigation } from '@/components/Navigation';
-
+import Image from 'next/image';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import Cat from '@/components/fun/Cat';
 import './globals.css';
 import { ListProvider } from '@/app/Context/store.jsx';
 
@@ -18,6 +20,16 @@ export default async function RootLayout({ children }) {
         <ListProvider>
           <Navigation />
           {children}
+
+          <div className='fixed bottom-[-20px] right-[-40px] w-[14vw]'>
+            <AspectRatio ratio={4 / 3}>
+              <Image
+                className='bottom-0'
+                src='/static/images/goose/IMG_4185.png'
+                fill
+              />
+            </AspectRatio>
+          </div>
         </ListProvider>
       </body>
     </html>

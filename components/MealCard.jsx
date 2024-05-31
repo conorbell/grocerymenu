@@ -1,16 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { AddGroceryButton } from '@/components/groceryButtons';
-import supabase from '@/utils/supabase';
+import { createClient } from '@/utils/supabase/client';
+import CreateMeal from '@/app/menus/createMeal/page';
 import Image from 'next/image';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   Card,
   CardContent,
@@ -19,18 +12,30 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Button } from './ui/button';
+import { UpdateMeal } from './updateMeal';
 
 export default function MealCard(props) {
+  const supabase = createClient();
   const { category } = props;
   const [meals, setMeals] = useState();
-  // const [recipe, setRecipe] = useState();
-  // const [ingredients, setIngredients] = useState();
-  // const [recipeIngredients, setRecipeIngredients] = useState();
 
+  const handleButtonClick = (meal) => {
+    console.log('meal', meal);
+  };
   useEffect(() => {
     const fetchMeals = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: mealData, error } = await supabase
           .from('meals')
           .select(
             `*, 
@@ -48,9 +53,16 @@ export default function MealCard(props) {
         if (error) {
           console.error('Error fetching meals:', error.message);
         } else {
-          console.log('Fetched meals:', data);
+          const { data: chefData, error: chefError } = await supabase
+            .from('chefs')
+            .select('*');
 
-          setMeals(data);
+          const mealsWithChefs = mealData.map((meal) => {
+            const chef = chefData.find((chef) => chef.id === meal.chef_id);
+            return { ...meal, chef_name: chef ? chef.chef : 'poop' };
+          });
+
+          setMeals(mealsWithChefs);
         }
       } catch (error) {
         console.error('Error in fetchMeals:', error.message);
@@ -65,19 +77,24 @@ export default function MealCard(props) {
       {meals &&
         meals.map((meal, i) => (
           <div key={`${category}${i}`} className='m-auto mb-10'>
-            <Card className='h-auto'>
+            <Card className='w-[38vw]'>
               <CardHeader>
                 <CardTitle>{meal.meal_name}</CardTitle>
               </CardHeader>
               <CardContent>
                 <figure>
-                  <Image
-                    alt={`${meal.meal_name}`}
-                    width={'400'}
-                    height={'400'}
-                    src={meal.image}
-                    className='m-auto'
-                  />
+                  <AspectRatio ratio={4 / 3}>
+                    <Image
+                      alt={`${meal.meal_name}`}
+                      // width={400}
+                      // height={400}
+                      loading='lazy'
+                      quality={100}
+                      fill
+                      src={meal.image}
+                      className='m-auto'
+                    />
+                  </AspectRatio>
                 </figure>
                 <CardDescription>
                   {(meal.recipe && meal.recipe.instructions && (
@@ -102,12 +119,24 @@ export default function MealCard(props) {
               <CardFooter>
                 <div className=' '>
                   <div className=''>
-                    <AddGroceryButton
-                      meal={
-                        (meal.recipe && meal.recipe.recipe_ingredients) ||
-                        'poop'
-                      }
-                    />
+                    {(meal.recipe && (
+                      <AddGroceryButton
+                        ingredients={meal.recipe.recipe_ingredients || 'poop'}
+                        title={meal.meal_name}
+                        chef={meal.chef_name}
+                      />
+                    )) ||
+                      'No recipe found'}
+                    <Dialog>
+                      <DialogTrigger>Edit Meal</DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle></DialogTitle>
+
+                          <UpdateMeal meal={meal} />
+                        </DialogHeader>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               </CardFooter>
