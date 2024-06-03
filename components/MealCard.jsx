@@ -29,8 +29,9 @@ export default function MealCard(props) {
   const { category } = props;
   const [meals, setMeals] = useState();
 
+  console.log('meals', meals);
+
   const handleButtonClick = async (meal) => {
-    console.log('meal', meal);
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();
 

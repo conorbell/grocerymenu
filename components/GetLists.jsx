@@ -5,6 +5,8 @@ import { saveToSupaBase } from '@/app/menus/checkout/actions';
 
 export const GetLists = () => {
   const { groceryList, mealList } = useList();
+  console.log('getLists', groceryList);
+  console.log('mealList', mealList);
 
   return (
     <>

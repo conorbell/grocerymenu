@@ -13,7 +13,7 @@ export const ListProvider = ({ children }) => {
   };
 
   const addToGroceryList = (ingredients) => {
-    // console.log('set ingredients', ingredients);
+    console.log('set ingredients', ingredients);
     setGroceryList((prevList) => {
       const updatedList = [...prevList];
 

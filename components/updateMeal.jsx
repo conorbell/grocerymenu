@@ -92,6 +92,7 @@ export function UpdateMeal(props) {
 
   async function onSubmit(values) {
     const supabase = createClient();
+    let recipeId, image, fileName, chef_id;
 
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();
@@ -104,7 +105,6 @@ export function UpdateMeal(props) {
       return;
     }
 
-    console.log('values', values);
     const {
       chef: chef,
       mealName: mealName,
@@ -113,18 +113,11 @@ export function UpdateMeal(props) {
       recipeLink: recipeLink,
     } = values;
 
-    let image, fileName;
-
     if (file && file.length > 0) {
       fileName = file[0].name;
       image = file[0];
     }
 
-    console.log('chef', chef);
-    console.log('mealName', mealName);
-    console.log('ingredients', ingredients);
-    console.log('recipeLink', recipeLink);
-    let chef_id;
     if (chef) {
       //get chef id
 
@@ -139,7 +132,7 @@ export function UpdateMeal(props) {
       chef_id = chefData;
     }
 
-    console.log('chef_id', chef_id);
+    // console.log('chef_id', chef_id);
 
     //upload image if it exists
     let imageUrl = null;
@@ -152,7 +145,7 @@ export function UpdateMeal(props) {
         console.error('Error uploading file', error);
         return;
       }
-      console.log('data', data);
+      //   console.log('data', data);
 
       const imageUrlObj = supabase.storage
         .from('meals')
@@ -162,27 +155,18 @@ export function UpdateMeal(props) {
     }
 
     //get meal_id
-    // let meal_id;
+
     const { data: meal_id, error: mealIDError } = await supabase
       .from('meals')
       .select('meal_id')
       .eq('meal_name', mealName)
       .single();
 
-    // console.log('meal_id', mealID);
-    // console.log('mealIDError', mealIDError);
-
-    console.log('meal_id', meal_id.meal_id);
-    console.log('imageUrl', imageUrl);
     //update meal
     const { data: mealData, error: mealError } = await supabase
       .from('meals')
       .update([{ chef_id: chef_id, meal_name: mealName, image: imageUrl }])
       .eq('meal_id', meal_id.meal_id);
-
-    console.log('channels', channels);
-    console.log('mealData', mealData);
-    console.log('mealError', mealError);
 
     //get recipe id
     const { data: recipe_id, error: recipeIDError } = await supabase
@@ -190,34 +174,30 @@ export function UpdateMeal(props) {
       .select('recipe_id')
       .eq('meal_id', meal_id.meal_id);
 
-    if (recipeLink) {
-      //update recipe table
-      const { data: recipeData, error: recipeError } = await supabase
-        .from('recipe')
-        .upsert({
-          meal_id: meal_id.meal_id,
-          title: mealName,
-          instructions: recipeLink,
-        })
-        .select('recipe_id')
-        .single();
+    //update recipe table
+    const { data: recipeData, error: recipeError } = await supabase
+      .from('recipe')
+      .upsert({
+        meal_id: meal_id.meal_id,
+        title: mealName,
+        instructions: recipeLink,
+      })
+      .select('recipe_id')
+      .single();
 
-      let recipeId;
-      if (recipeError) {
-        recipeId = recipe_id[0].recipe_id; // Use the previously fetched recipe_id
-      } else {
-        recipeId = recipeData[0].recipe_id; // Extract the recipe_id from the response data
-      }
+    if (recipeError) {
+      recipeId = recipe_id[0].recipe_id; // Use the previously fetched recipe_id
+    } else {
+      recipeId = recipeData[0].recipe_id; // Extract the recipe_id from the response data
     }
 
     //TODO:delete existing ingredients
 
     //get existing ingredients id
-    const newIngredientArray = [];
 
     for (const ingredient of ingredients) {
       const ingredientObj = {};
-      console.log('ingredient', ingredient);
+
       const { data: existingIngredient, error: existingIngredientError } =
         await supabase
           .from('ingredients')
@@ -226,14 +206,6 @@ export function UpdateMeal(props) {
           .single();
 
       if (existingIngredient) {
-        // console.log('existingIngredient', existingIngredient);
-
-        // ingredientObj.recipeId = recipeId;
-        // ingredientObj.name = ingredient.name;
-        // ingredientObj.ingredient_id = existingIngredient.ingredient_id;
-        // ingredientObj.amount = ingredient.amount;
-        // ingredientObj[ingredient.name] = ingredient.name;
-        // ingredientObj[existingIngredient.ingredient_id] =
         const { data: recipe_ingredients, error: recipeIngredError } =
           await supabase
             .from('recipe_ingredients')
@@ -245,11 +217,6 @@ export function UpdateMeal(props) {
               },
             ])
             .single();
-
-        // console.log('recipe_ingredients', recipe_ingredients);
-        // console.log('recipeIngredError', recipeIngredError);
-
-        // newIngredientArray.push(ingredientObj);
       } else {
         const { data: newIngredient, error: newIngredientError } =
           await supabase
@@ -262,15 +229,10 @@ export function UpdateMeal(props) {
             .select('ingredient_id')
             .single();
 
-        // ingredientObj.recipeId = recipeId;
-        // ingredientObj.name = ingredient.name;
-        // ingredientObj.ingredient_id = newIngredient.ingredient_id;
-        // ingredientObj.amount = ingredient.amount;
-
         const { data: recipe_ingredients, error: recipeIngredError } =
           await supabase
             .from('recipe_ingredients')
-            .insert([
+            .upsert([
               {
                 recipe_id: recipeId,
                 ingredient_id: newIngredient.ingredient_id,

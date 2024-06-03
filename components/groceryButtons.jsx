@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Button, buttonVariants } from '@/components/ui/button';
 
 export const AddGroceryButton = ({ chef, title, ingredients }) => {
+  console.log('agb ingredients', ingredients);
   const { groceryList, addToGroceryList, addToMealList } = useList();
   const [view, setView] = useState(false);
 
