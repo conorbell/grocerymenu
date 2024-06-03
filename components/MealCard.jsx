@@ -29,8 +29,77 @@ export default function MealCard(props) {
   const { category } = props;
   const [meals, setMeals] = useState();
 
-  const handleButtonClick = (meal) => {
+  const handleButtonClick = async (meal) => {
     console.log('meal', meal);
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+
+    console.log('sessionError', sessionError);
+
+    const session = sessionData.session;
+    if (!session) {
+      console.error('User is not authenticated');
+      return;
+    }
+
+    let recipeId;
+
+    //get recipe id
+    const { data: recipe_id, error: recipe_idError } = await supabase
+      .from('recipe')
+      .select('recipe_id')
+      .eq('meal_id', meal.meal_id)
+      .single();
+
+    if (!recipe_idError) {
+      recipeId = recipe_id.recipe_id;
+    }
+
+    //get image
+    const { data: imageData, error: imageDataError } = await supabase
+      .from('meals')
+      .select('image')
+      .eq('meal_id', meal.meal_id)
+      .single();
+
+    // console.log('imageData', imageData);
+
+    const urlParts = imageData.image.split('/');
+    const key = urlParts[urlParts.length - 1];
+
+    // console.log('key', key);
+
+    // console.log('key', key);
+
+    if (recipeId) {
+      //delete from recipe ingredients
+      const { data: deleteRIData, error: deleteError } = await supabase
+        .from('recipe_ingredients')
+        .delete()
+        .eq('recipe_id', recipeId);
+
+      //delete from recipe
+      const { data: recipeData, error: deleteRecipeError } = await supabase
+        .from('recipe')
+        .delete()
+        .eq('recipe_id', recipeId);
+    }
+
+    //delete from meals
+    //delete image
+    // Delete image
+    const { data: deleteImageData, error: deleteImageError } =
+      await supabase.storage.from('meals').remove([`${key}`]); // Replace `images/` with your actual folder path
+
+    console.log('deleteImageError', deleteImageError);
+    if (deleteImageError) {
+      console.error('Error deleting image:', deleteImageError.message);
+    }
+
+    const { data: mealData, error: mealError } = await supabase
+      .from('meals')
+      .delete()
+      .eq('meal_id', meal.meal_id);
   };
   useEffect(() => {
     const fetchMeals = async () => {
@@ -128,7 +197,9 @@ export default function MealCard(props) {
                     )) ||
                       'No recipe found'}
                     <Dialog>
-                      <DialogTrigger>Edit Meal</DialogTrigger>
+                      <DialogTrigger>
+                        <Button variant='outline'>Edit Meal</Button>
+                      </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle></DialogTitle>
@@ -137,6 +208,12 @@ export default function MealCard(props) {
                         </DialogHeader>
                       </DialogContent>
                     </Dialog>
+                    <Button
+                      onClick={() => handleButtonClick(meal)}
+                      variant='outline'
+                    >
+                      Delete Meal
+                    </Button>
                   </div>
                 </div>
               </CardFooter>

@@ -57,7 +57,7 @@ export default function CreateMeal() {
 
       const { publicUrl: imageUrl } = imageUrlObj.data;
 
-      console.log('imageUrl', imageUrl);
+      console.log('create imageUrl', imageUrl);
 
       //check if meals already has this entry
       const { data: mealCheckData, error: mealCheckError } = await supabase
