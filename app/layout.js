@@ -30,6 +30,11 @@ export default async function RootLayout({ children }) {
               />
             </AspectRatio>
           </div>
+          <div className='fixed flex justify center'>
+            <AspectRatio ratio={4 / 4}>
+              <Image src='/static/images/goose/IMG_6546-min.png' fill />
+            </AspectRatio>
+          </div>
         </ListProvider>
       </body>
     </html>

@@ -23,13 +23,23 @@ import {
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from './ui/button';
 import { UpdateMeal } from './updateMeal';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
+
+gsap.registerPlugin(useGSAP);
+
+const arrOLinks = [
+  '/static/images/goose/IMG_6546-min.png',
+  '/static/images/goose/IMG_1531-min.png',
+  '/static/images/goose/IMG_6031-min.png',
+  '/static/images/goose/IMG_7031-min.png',
+  '/static/images/goose/IMG_7581-min.png',
+];
 
 export default function MealCard(props) {
   const supabase = createClient();
   const { category } = props;
   const [meals, setMeals] = useState();
-
-  console.log('meals', meals);
 
   const handleButtonClick = async (meal) => {
     const { data: sessionData, error: sessionError } =
@@ -102,6 +112,7 @@ export default function MealCard(props) {
       .delete()
       .eq('meal_id', meal.meal_id);
   };
+
   useEffect(() => {
     const fetchMeals = async () => {
       try {
@@ -147,7 +158,22 @@ export default function MealCard(props) {
       {meals &&
         meals.map((meal, i) => (
           <div key={`${category}${i}`} className='m-auto mb-10'>
-            <Card className='w-[38vw]'>
+            {/* <div
+              style={{
+                backgroundImage: `url(${arrOLinks[i]})`,
+                backgroundSize: '100px',
+                backgroundRepeat: 'no-repeat',
+              }}
+              className='absolute inset-0   bg-center -z-20'
+            /> */}
+            <Card
+              className='w-[38vw]'
+              // style={{
+              //   backgroundImage: `url(${arrOLinks[i]})`,
+              //   backgroundSize: '400px',
+              //   backgroundRepeat: 'no-repeat',
+              // }}
+            >
               <CardHeader>
                 <CardTitle>{meal.meal_name}</CardTitle>
               </CardHeader>

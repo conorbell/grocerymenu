@@ -6,6 +6,9 @@ const ListContext = createContext();
 export const ListProvider = ({ children }) => {
   const [mealList, setMealList] = useState([]);
   const [groceryList, setGroceryList] = useState([]);
+  const [user, setUser] = useState(null);
+
+  //TODO: create user context?
 
   const addToMealList = (meal) => {
     console.log('meal context', meal);
@@ -51,11 +54,32 @@ export const ListProvider = ({ children }) => {
     });
   };
 
+  const updateGroceryItemQuantity = (index, quantity) => {
+    setGroceryList((prevList) => {
+      const updatedList = [...prevList];
+      if (index >= 0 && index < updatedList.length) {
+        updatedList[index].quantity = quantity;
+      }
+      return updatedList;
+    });
+  };
+
+  const removeGroceryItem = (index) => {
+    setGroceryList((prevList) => {
+      const updatedList = prevList.filter((_, i) => i !== index);
+      return updatedList;
+    });
+  };
+
   const value = {
+    user,
+    setUser,
     mealList,
     groceryList,
     addToMealList,
     addToGroceryList,
+    updateGroceryItemQuantity,
+    removeGroceryItem,
   };
 
   return <ListContext.Provider value={value}>{children}</ListContext.Provider>;

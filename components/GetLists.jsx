@@ -1,12 +1,44 @@
 'use client';
 import { useList } from '@/app/Context/store';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { saveToSupaBase } from '@/app/menus/checkout/actions';
 
 export const GetLists = () => {
-  const { groceryList, mealList } = useList();
+  const [isEditing, setIsEditing] = useState(false);
+
+  const {
+    groceryList,
+    mealList,
+    updateGroceryItemQuantity,
+    removeGroceryItem,
+  } = useList();
   console.log('getLists', groceryList);
   console.log('mealList', mealList);
+
+  const handleQuantityChange = (e, index) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+    const qt = Number(formData.get('qt'));
+
+    console.log('qt', qt, typeof qt);
+    // console.log('num', Number(qt));
+    updateGroceryItemQuantity(index, qt);
+  };
+
+  const handleRemoveItem = (i) => {
+    console.log('i', i);
+    removeGroceryItem(i);
+  };
+
+  const toggleEdit = () => {
+    setIsEditing(!isEditing);
+    // If stopping editing, save changes back to the context
+    if (isEditing) {
+      // Add logic to save updated editableGroceryList to the original context if needed
+    }
+  };
 
   return (
     <>
@@ -24,8 +56,43 @@ export const GetLists = () => {
                     key={`grocery${i}`}
                     className='flex justify-between items-center  mb-2'
                   >
-                    <h1 className='text-black text-xl  '>
-                      {meal.name}: {meal.quantity}
+                    <h1 className='text-black text-xl'>
+                      {meal.name}:
+                      {isEditing ? (
+                        <>
+                          <form
+                            className='grid grid-cols-2 gap-1'
+                            method='POST'
+                            onSubmit={(e) =>
+                              handleQuantityChange(e, i, meal.quantity)
+                            }
+                          >
+                            <input
+                              type='number'
+                              name='qt'
+                              className='border rounded p-1 ml-2 text-xl'
+                            />
+                            <div>
+                              <Button
+                                type='submit'
+                                variant='outline'
+                                className=''
+                              >
+                                Update List
+                              </Button>
+                              <Button
+                                variant='outline'
+                                className='ml-2'
+                                onClick={() => handleRemoveItem(i)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </form>
+                        </>
+                      ) : (
+                        meal.quantity
+                      )}
                     </h1>
                   </div>
                 ))}
@@ -50,8 +117,8 @@ export const GetLists = () => {
             </div>
           </div>
           <div className='flex justify-center'>
-            <Button variant='outline' className='mr-4'>
-              Edit list
+            <Button onClick={toggleEdit} variant='outline' className='mr-4'>
+              {isEditing ? 'Stop Editing' : 'Edit List'}
             </Button>
 
             <Button
