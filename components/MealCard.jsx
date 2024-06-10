@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { AddGroceryButton } from '@/components/groceryButtons';
 import { createClient } from '@/utils/supabase/client';
-import CreateMeal from '@/app/menus/createMeal/page';
 import Image from 'next/image';
 import {
   Card,
@@ -25,6 +24,12 @@ import { Button } from './ui/button';
 import { UpdateMeal } from './updateMeal';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import {
+  deleteFromMeals,
+  deleteFromRecipe,
+  deleteFromRecipeIngredients,
+} from '@/utils/supabase/helpers/helpers';
+import { Bounce, toast } from 'react-toastify';
 
 gsap.registerPlugin(useGSAP);
 
@@ -42,75 +47,61 @@ export default function MealCard(props) {
   const [meals, setMeals] = useState();
 
   const handleButtonClick = async (meal) => {
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession();
+    /**
+     * meal id
+     * recipe id
+     *
+     */
 
-    console.log('sessionError', sessionError);
+    console.log('meal', meal);
+    const {
+      meal_id,
+      recipe: { recipe_id },
+    } = meal;
 
-    const session = sessionData.session;
-    if (!session) {
-      console.error('User is not authenticated');
-      return;
-    }
+    console.log('meal_id', meal_id);
+    console.log('recipe_id', recipe_id);
 
-    let recipeId;
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
 
-    //get recipe id
-    const { data: recipe_id, error: recipe_idError } = await supabase
-      .from('recipe')
-      .select('recipe_id')
-      .eq('meal_id', meal.meal_id)
-      .single();
+      console.log('sessionError', sessionError);
 
-    if (!recipe_idError) {
-      recipeId = recipe_id.recipe_id;
-    }
+      const session = sessionData.session;
+      console.log('session', session);
+      if (!session) {
+        console.error('User is not authenticated');
+        return;
+      }
 
-    //get image
-    const { data: imageData, error: imageDataError } = await supabase
-      .from('meals')
-      .select('image')
-      .eq('meal_id', meal.meal_id)
-      .single();
-
-    // console.log('imageData', imageData);
-
-    const urlParts = imageData.image.split('/');
-    const key = urlParts[urlParts.length - 1];
-
-    // console.log('key', key);
-
-    // console.log('key', key);
-
-    if (recipeId) {
       //delete from recipe ingredients
-      const { data: deleteRIData, error: deleteError } = await supabase
-        .from('recipe_ingredients')
-        .delete()
-        .eq('recipe_id', recipeId);
-
+      const { data: deleteRIData, error: deleteRIError } =
+        await deleteFromRecipeIngredients(recipe_id, supabase);
       //delete from recipe
-      const { data: recipeData, error: deleteRecipeError } = await supabase
-        .from('recipe')
-        .delete()
-        .eq('recipe_id', recipeId);
+      const { data: deleteR, error: deleteRError } = await deleteFromRecipe(
+        recipe_id,
+        supabase
+      );
+      //delete from meal
+      const { data: deleteMeal, error: deleteMealError } =
+        await deleteFromMeals(meal_id, supabase);
+
+      if (deleteRIError) {
+        console.log('deleteRIError', deleteRIError);
+      }
+
+      if (deleteRError) {
+        console.log('deleteRErrror', deleteRError);
+      }
+
+      if (deleteMealError) {
+        console.log('deleteMealError', deleteMealError);
+      }
+      console.log('deleteMeal', deleteMeal);
+    } catch (error) {
+      console.log('error', error);
     }
-
-    //delete from meals
-    //delete image
-    // Delete image
-    const { data: deleteImageData, error: deleteImageError } =
-      await supabase.storage.from('meals').remove([`${key}`]); // Replace `images/` with your actual folder path
-
-    console.log('deleteImageError', deleteImageError);
-    if (deleteImageError) {
-      console.error('Error deleting image:', deleteImageError.message);
-    }
-
-    const { data: mealData, error: mealError } = await supabase
-      .from('meals')
-      .delete()
-      .eq('meal_id', meal.meal_id);
   };
 
   useEffect(() => {
@@ -153,27 +144,13 @@ export default function MealCard(props) {
     fetchMeals();
   }, [category]);
 
+  // console.log('meals', meals);
   return (
     <>
       {meals &&
         meals.map((meal, i) => (
           <div key={`${category}${i}`} className='m-auto mb-10'>
-            {/* <div
-              style={{
-                backgroundImage: `url(${arrOLinks[i]})`,
-                backgroundSize: '100px',
-                backgroundRepeat: 'no-repeat',
-              }}
-              className='absolute inset-0   bg-center -z-20'
-            /> */}
-            <Card
-              className='w-[38vw]'
-              // style={{
-              //   backgroundImage: `url(${arrOLinks[i]})`,
-              //   backgroundSize: '400px',
-              //   backgroundRepeat: 'no-repeat',
-              // }}
-            >
+            <Card className='w-[38vw]'>
               <CardHeader>
                 <CardTitle>{meal.meal_name}</CardTitle>
               </CardHeader>
@@ -224,7 +201,7 @@ export default function MealCard(props) {
                     )) ||
                       'No recipe found'}
                     <Dialog>
-                      <DialogTrigger>
+                      <DialogTrigger asChild>
                         <Button variant='outline'>Edit Meal</Button>
                       </DialogTrigger>
                       <DialogContent>

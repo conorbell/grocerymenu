@@ -6,6 +6,9 @@ import Cat from '@/components/fun/Cat';
 import './globals.css';
 import { ListProvider } from '@/app/Context/store.jsx';
 
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from 'react-toastify';
+
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
@@ -19,8 +22,8 @@ export default async function RootLayout({ children }) {
       <body className={inter.className}>
         <ListProvider>
           <Navigation />
+          <ToastContainer />
           {children}
-
           <div className='fixed bottom-[-20px] right-[-40px] w-[14vw]'>
             <AspectRatio ratio={4 / 3}>
               <Image
