@@ -30,6 +30,7 @@ const mate = {
   meals_planned: 25,
   items_added: 110,
   items_ticked: 97,
+  rpg_class: 'Astrologer',
 };
 
 // ---- sample chat (fake data, nothing is sent anywhere) ----
@@ -116,11 +117,13 @@ export const ProfilePreview = () => {
   const [removed, setRemoved] = useState([]);
   const [inspectId, setInspectId] = useState('me');
   const [allocating, setAllocating] = useState(false);
-  const [statPoints, setStatPoints] = useState({ strength: 2, magic: 1 });
+  const [statPoints, setStatPoints] = useState({ strength: 2, mind: 1 });
+  const [rpgClass, setRpgClass] = useState(null);
   const mine = {
     ...me,
     favorites: me.favorites.filter((t) => !removed.includes(t)),
     stat_points: statPoints,
+    rpg_class: rpgClass,
   };
 
   return (
@@ -146,14 +149,15 @@ export const ProfilePreview = () => {
           mine
           onRemoveFavorite={(t) => setRemoved((r) => [...r, t])}
           allocating={allocating}
-          onSaveAllocation={async (points) => {
-            setStatPoints(points);
+          onSaveAllocation={async (fields) => {
+            setStatPoints(fields.stat_points);
+            setRpgClass(fields.rpg_class);
             return { ok: true };
           }}
           onCloseAllocation={() => setAllocating(false)}
         >
           <Command onClick={() => setEditing(true)}>Edit profile</Command>
-          <Command onClick={() => setAllocating(true)}>Allocate stats</Command>
+          <Command onClick={() => setAllocating(true)}>Class &amp; stats</Command>
           <Command onClick={() => {}}>See the list</Command>
           <Command
             onClick={() => {

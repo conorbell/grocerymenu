@@ -126,6 +126,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 | `profiles.sql` | `profiles` (auto-created per user via trigger), `avatars` storage bucket |
 | `profile_stats.sql` | lifetime counters + `bump_my_stats()` RPC |
 | `stat_points.sql` | `profiles.stat_points` jsonb |
+| `rpg_class.sql` | `profiles.rpg_class` (picked class; null = Vagabond) |
 | `chat.sql` | `messages`, `chat_reads`, realtime |
 | `meals.sql` | `meals` + seed of the 11 originals, `planned_meals.meal_id/servings`, favourites → ids, `meals_created` stat, `meal-photos` bucket |
 

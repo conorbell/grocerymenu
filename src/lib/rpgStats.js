@@ -6,24 +6,49 @@
 //   LV    level N needs 50·N·(N−1) EXP  (LV2 = 100, LV3 = 300, LV4 = 600 …)
 //   HP    max from appetite + level; each thing still to buy drains 3
 //   MP    max from cooking + level; each meal still planned drains 4
-//   Stat points: 5 to start + 3 per level, spent by you (+1 per point, or
-//   +1% for Evasion / Magic Evasion). Stored on the profile as stat_points.
+//   Class picked by you (profiles.rpg_class, Vagabond until you pick); it
+//         sets each stat's starting value
+//   Stats class base + growth from what you do (see `growth`) + your points
+//   Stat points: 5 to start + 3 per level, spent by you (+1 per point).
+//   Stored on the profile as stat_points.
 
 const n = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 
 const expForLevel = (level) => 50 * level * (level - 1);
 
-export const STAT_KEYS = [
-  'strength',
-  'speed',
-  'stamina',
-  'magic',
-  'attack',
-  'defense',
-  'evasion',
-  'magic_defense',
-  'magic_evasion',
+// Each class sets the starting stats. `level` is the class's starting level,
+// shown in the class picker only: LV always comes from EXP.
+export const CLASSES = [
+  { name: 'Hero', level: 7, stats: { vigor: 14, mind: 9, endurance: 12, strength: 16, dexterity: 9, intelligence: 7, faith: 8, arcane: 11 } },
+  { name: 'Bandit', level: 5, stats: { vigor: 10, mind: 11, endurance: 10, strength: 9, dexterity: 13, intelligence: 9, faith: 8, arcane: 14 } },
+  { name: 'Astrologer', level: 6, stats: { vigor: 9, mind: 15, endurance: 9, strength: 8, dexterity: 12, intelligence: 16, faith: 7, arcane: 9 } },
+  { name: 'Warrior', level: 8, stats: { vigor: 11, mind: 12, endurance: 11, strength: 10, dexterity: 16, intelligence: 10, faith: 8, arcane: 9 } },
+  { name: 'Prisoner', level: 9, stats: { vigor: 11, mind: 12, endurance: 11, strength: 11, dexterity: 14, intelligence: 14, faith: 6, arcane: 9 } },
+  { name: 'Confessor', level: 10, stats: { vigor: 10, mind: 13, endurance: 10, strength: 12, dexterity: 12, intelligence: 9, faith: 14, arcane: 9 } },
+  { name: 'Wretch', level: 1, stats: { vigor: 10, mind: 10, endurance: 10, strength: 10, dexterity: 10, intelligence: 10, faith: 10, arcane: 10 } },
+  { name: 'Vagabond', level: 9, stats: { vigor: 15, mind: 10, endurance: 11, strength: 14, dexterity: 13, intelligence: 9, faith: 9, arcane: 7 } },
+  { name: 'Prophet', level: 7, stats: { vigor: 10, mind: 14, endurance: 8, strength: 11, dexterity: 10, intelligence: 7, faith: 16, arcane: 10 } },
+  { name: 'Samurai', level: 9, stats: { vigor: 12, mind: 11, endurance: 13, strength: 12, dexterity: 15, intelligence: 9, faith: 8, arcane: 8 } },
 ];
+
+export const DEFAULT_CLASS = 'Vagabond';
+
+// Unknown or unset classes fall back to the default.
+export const classFor = (name) =>
+  CLASSES.find((c) => c.name === name) || CLASSES.find((c) => c.name === DEFAULT_CLASS);
+
+const STATS = [
+  { key: 'vigor', label: 'Vigor' },
+  { key: 'mind', label: 'Mind' },
+  { key: 'endurance', label: 'Endurance' },
+  { key: 'strength', label: 'Strength' },
+  { key: 'dexterity', label: 'Dexterity' },
+  { key: 'intelligence', label: 'Intelligence' },
+  { key: 'faith', label: 'Faith' },
+  { key: 'arcane', label: 'Arcane' },
+];
+
+export const STAT_KEYS = STATS.map((s) => s.key);
 
 export const pointsEarned = (level) => 5 + (level - 1) * 3;
 
@@ -40,18 +65,11 @@ export const cleanPoints = (raw) => {
 export const pointsSpent = (points) =>
   Object.values(cleanPoints(points)).reduce((sum, v) => sum + v, 0);
 
-export const characterClass = (cook, eat) => {
-  if (cook >= 8 && eat >= 8) return 'Feast Paladin';
-  if (cook >= 8) return 'Kitchen Mage';
-  if (eat >= 8) return 'Snack Berserker';
-  if (cook <= 2 && eat <= 2) return 'Wandering Ascetic';
-  if (cook <= 2) return 'Takeout Rogue';
-  if (eat <= 2) return 'Picky Bard';
-  return 'Pantry Squire';
-};
-
-// `pointsOverride` lets the allocate screen preview unsaved changes.
-export const rpgStats = (profile, { toBuy = 0, mealsPlanned = 0, pointsOverride } = {}) => {
+// `pointsOverride` / `classOverride` let the allocate screen preview unsaved changes.
+export const rpgStats = (
+  profile,
+  { toBuy = 0, mealsPlanned = 0, pointsOverride, classOverride } = {}
+) => {
   const cook = n(profile.cook_willingness, 5);
   const eat = n(profile.eat_willingness, 5);
   const meals = n(profile.meals_planned);
@@ -66,12 +84,25 @@ export const rpgStats = (profile, { toBuy = 0, mealsPlanned = 0, pointsOverride 
   const nextLevelIn = expForLevel(level + 1) - exp;
 
   const points = cleanPoints(pointsOverride ?? profile.stat_points);
+  const rpgClass = classFor(classOverride ?? profile.rpg_class);
+
+  // What you've done in the app grows each stat on top of the class's base.
+  const growth = {
+    vigor: eat,
+    mind: cook,
+    endurance: Math.floor(ticked / 5),
+    strength: Math.floor(added / 5),
+    dexterity: Math.floor(meals / 2),
+    intelligence: created,
+    faith: favs,
+    arcane: level - 1,
+  };
 
   const hpMax = 40 + eat * 8 + level * 5;
   const mpMax = 20 + cook * 6 + level * 3;
 
   return {
-    className: characterClass(cook, eat),
+    className: rpgClass.name,
     level,
     exp,
     nextLevelIn,
@@ -82,26 +113,11 @@ export const rpgStats = (profile, { toBuy = 0, mealsPlanned = 0, pointsOverride 
     pointsEarned: pointsEarned(level),
     pointsSpent: Math.min(pointsSpent(points), pointsEarned(level)),
     pointsLeft: Math.max(0, pointsEarned(level) - pointsSpent(points)),
-    stats: [
-      { key: 'strength', label: 'Strength', base: 10 + ticked },
-      { key: 'speed', label: 'Speed', base: 10 + meals },
-      { key: 'stamina', label: 'Stamina', base: 10 + eat * 5 },
-      { key: 'magic', label: 'Magic', base: 10 + cook * 5 },
-      { key: 'attack', label: 'Attack', base: 10 + added },
-      { key: 'defense', label: 'Defense', base: 10 + favs * 3 },
-      { key: 'evasion', label: 'Evasion', base: (10 - cook) * 8, suffix: '%' },
-      { key: 'magic_defense', label: 'Magic Defense', base: 10 + eat * 4 + level },
-      { key: 'magic_evasion', label: 'Magic Evasion', base: (10 - eat) * 5, suffix: '%' },
-    ].map((stat) => {
+    stats: STATS.map((stat) => {
+      const base = rpgClass.stats[stat.key] + growth[stat.key];
       const bonus = points[stat.key] || 0;
-      const total = stat.base + bonus;
-      return {
-        ...stat,
-        suffix: stat.suffix || '',
-        bonus,
-        total,
-        value: `${total}${stat.suffix || ''}`,
-      };
+      const total = base + bonus;
+      return { ...stat, base, bonus, total, value: `${total}` };
     }),
   };
 };

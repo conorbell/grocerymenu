@@ -5,7 +5,7 @@ import { useList } from '../../functions/ListContextWrapper';
 import { HeartIcon } from '../../HeartIcon';
 import { Avatar } from '../../Avatar';
 import { PhotoCropper } from '../../PhotoCropper';
-import { rpgStats, cleanPoints } from '../../../lib/rpgStats';
+import { rpgStats, cleanPoints, CLASSES, classFor } from '../../../lib/rpgStats';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -108,7 +108,7 @@ const Bar = ({ value, max, label }) => (
 );
 
 // RPG-style character sheet. `children` = the Commands (only on your own).
-// While `allocating`, the stats window turns into the stat-point screen.
+// While `allocating`, the stats window turns into the class + stat-point screen.
 export const ProfileCard = ({
   profile,
   fallbackName,
@@ -122,12 +122,14 @@ export const ProfileCard = ({
   const { toBuyCount = 0, mealCount = 0, mealById } = useList();
   const name = profile.display_name || fallbackName;
   const [draft, setDraft] = useState(null);
+  const [draftClass, setDraftClass] = useState(null);
   const [allocError, setAllocError] = useState(null);
   const [savingAlloc, setSavingAlloc] = useState(false);
 
   // Start a fresh draft from the saved points each time allocate mode opens.
   useEffect(() => {
     setDraft(allocating ? cleanPoints(profile.stat_points) : null);
+    setDraftClass(allocating ? classFor(profile.rpg_class).name : null);
     setAllocError(null);
   }, [allocating]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -135,6 +137,7 @@ export const ProfileCard = ({
     toBuy: toBuyCount,
     mealsPlanned: mealCount,
     pointsOverride: draft ?? undefined,
+    classOverride: draftClass ?? undefined,
   });
   const saved = cleanPoints(profile.stat_points);
   const changePoint = (key, delta) =>
@@ -143,11 +146,16 @@ export const ProfileCard = ({
       if (!next[key]) delete next[key];
       return next;
     });
-  const draftChanged = draft && JSON.stringify(draft) !== JSON.stringify(saved);
+  const classIndex = CLASSES.findIndex((c) => c.name === rpg.className);
+  const shiftClass = (delta) =>
+    setDraftClass(CLASSES[(classIndex + delta + CLASSES.length) % CLASSES.length].name);
+  const draftChanged =
+    draft &&
+    (JSON.stringify(draft) !== JSON.stringify(saved) || draftClass !== profile.rpg_class);
 
   const saveAllocation = async () => {
     setSavingAlloc(true);
-    const res = await onSaveAllocation(draft);
+    const res = await onSaveAllocation({ stat_points: draft, rpg_class: draftClass });
     setSavingAlloc(false);
     if (res?.ok === false) setAllocError(res.message || 'Could not save your stat points');
     else onCloseAllocation();
@@ -204,6 +212,24 @@ export const ProfileCard = ({
         >
           <div className="sheet__stats-wrap">
             {allocating && (
+              <div className="list-row class-pick">
+                <span className="sheet__stat-name">Class</span>
+                <span className="leader" aria-hidden="true" />
+                <span className="sheet__stat-value" aria-live="polite">
+                  {rpg.className}
+                  <span className="sheet__bonus"> LV {CLASSES[classIndex].level}</span>
+                </span>
+                <span className="stepper">
+                  <button type="button" aria-label="Previous class" onClick={() => shiftClass(-1)}>
+                    ◀
+                  </button>
+                  <button type="button" aria-label="Next class" onClick={() => shiftClass(1)}>
+                    ▶
+                  </button>
+                </span>
+              </div>
+            )}
+            {allocating && (
               <p className="points-banner">
                 <span className="section-label">Points to spend</span>
                 <span className="points-banner__num">{rpg.pointsLeft}</span>
@@ -216,7 +242,7 @@ export const ProfileCard = ({
                   <span className="leader" aria-hidden="true" />
                   <span className="sheet__stat-value">
                     {stat.value}
-                    {stat.bonus > 0 && <span className="sheet__bonus"> (+{stat.bonus})</span>}
+                    {allocating && stat.bonus > 0 && <span className="sheet__bonus"> (+{stat.bonus})</span>}
                   </span>
                   {allocating && (
                     <span className="stepper">
@@ -719,12 +745,12 @@ export const Account = () => {
           mine
           onRemoveFavorite={toggleFavorite}
           allocating={allocating}
-          onSaveAllocation={(points) => saveProfile({ stat_points: points })}
+          onSaveAllocation={saveProfile}
           onCloseAllocation={() => setAllocating(false)}
         >
           {!profilesError && <Command onClick={() => setEditing(true)}>Edit profile</Command>}
           {!profilesError && (
-            <Command onClick={() => setAllocating(true)}>Allocate stats</Command>
+            <Command onClick={() => setAllocating(true)}>Class &amp; stats</Command>
           )}
           <Command to="/checkout">See the list</Command>
           <Command onClick={() => openSettings()}>Account settings</Command>
