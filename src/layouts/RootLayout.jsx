@@ -83,20 +83,30 @@ const NavItem = ({ to, label, sub, end, onMouseEnter }) => (
   </NavLink>
 );
 
-// Yellow subtitle-style caption that pops up when a meal is added.
-const useAddedCaption = (mealList) => {
-  const [caption, setCaption] = useState(null);
-  const prevLength = useRef(mealList.length);
+// Yellow subtitle-style caption that pops up when a meal is added. The list
+// arriving from Supabase (after logging in) isn't an add, so nothing shows
+// until it has loaded once.
+const useAddedCaption = (mealList, listLoaded) => {
+  const [caption, setCaption] = useState(null); // { title } | null
+  const prevLength = useRef(null);
+  const count = mealList.length;
 
   useEffect(() => {
-    if (mealList.length > prevLength.current) {
-      setCaption(mealList[mealList.length - 1]);
-      const timer = setTimeout(() => setCaption(null), 2500);
-      prevLength.current = mealList.length;
-      return () => clearTimeout(timer);
+    if (!listLoaded) {
+      prevLength.current = null;
+      return;
     }
-    prevLength.current = mealList.length;
-  }, [mealList]);
+    if (prevLength.current !== null && count > prevLength.current) {
+      setCaption({ title: mealList[count - 1] });
+    }
+    prevLength.current = count;
+  }, [count, listLoaded]);
+
+  useEffect(() => {
+    if (!caption) return undefined;
+    const timer = setTimeout(() => setCaption(null), 2500);
+    return () => clearTimeout(timer);
+  }, [caption]);
 
   return caption;
 };
@@ -113,11 +123,12 @@ export const RootLayout = () => {
     myProfile,
     profilesLoaded,
     authReady,
+    listLoaded,
   } = useList();
   const [showCreate, setShowCreate] = useState(false);
   const closeCreate = useCallback(() => setShowCreate(false), []);
   const { pathname } = useLocation();
-  const caption = useAddedCaption(mealList);
+  const caption = useAddedCaption(mealList, listLoaded);
 
   const theme = themeFor(pathname);
   useEffect(() => {
@@ -206,7 +217,7 @@ export const RootLayout = () => {
 
       <div className="caption" aria-live="polite">
         {caption && (
-          <p key={`${caption}${mealList.length}`}>[adds {caption} to the list]</p>
+          <p key={`${caption.title}${mealList.length}`}>[adds {caption.title} to the list]</p>
         )}
       </div>
     </div>

@@ -108,6 +108,7 @@ const ListProvider = ({ children }) => {
   const [menu, setMenu] = useState([]);
   const [menuStatus, setMenuStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [syncError, setSyncError] = useState(null);
+  const [listLoaded, setListLoaded] = useState(false); // true once the list has arrived from Supabase
   const [profiles, setProfiles] = useState(loadCachedProfiles);
   // true once we have profiles from the cache or from Supabase
   const [profilesLoaded, setProfilesLoaded] = useState(() => loadCachedProfiles().length > 0);
@@ -136,6 +137,7 @@ const ListProvider = ({ children }) => {
   const refresh = useCallback(async () => {
     try {
       setList(await fetchShared());
+      setListLoaded(true);
       setSyncError(null);
     } catch (err) {
       console.error(err);
@@ -180,6 +182,7 @@ const ListProvider = ({ children }) => {
         setProfilesLoaded(false);
         saveCachedProfiles(null);
         setList(list.EMPTY_LIST);
+        setListLoaded(false);
         setMenu([]);
         setMenuStatus('loading');
       }
@@ -450,6 +453,7 @@ const ListProvider = ({ children }) => {
     deleteMeal,
     // the list
     plannedMeals: data.plannedMeals,
+    listLoaded,
     mealList: data.plannedMeals.map((meal) => meal.title),
     plannedMealFor: (mealId) => data.plannedMeals.find((p) => p.meal_id === mealId) || null,
     itemsOf: (plannedMeal) => list.itemsOf(data, plannedMeal),

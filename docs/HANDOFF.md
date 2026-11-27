@@ -187,9 +187,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
    `lilguy.jpg`, `myheadshot.png` (nothing references them; keep or delete).
 4. Small bugs: untick/re-tick double-counts `items_ticked` (the count comes
    from `toggleGroup` in `lib/list.js`; a real fix needs `bump_my_stats` to
-   accept a -1 or a per-item "ever ticked" flag); the "[adds … to the list]"
-   caption can get stuck, and shows on login, because `mealList` is a new
-   array every render (RootLayout `useAddedCaption`); shared-list
+   accept a -1 or a per-item "ever ticked" flag); shared-list
    realtime channel briefly subscribes twice after login; old saved lists may
    still contain "2 small potatoes" / "given up, have we?" items.
 5. Features discussed: group shopping list by aisle; maybe drop `/menu` (it
