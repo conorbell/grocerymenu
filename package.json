@@ -5,19 +5,21 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon server/index.js",
-    "build": "NODE_ENV=production webpack",
+    "build": "cross-env NODE_ENV=production webpack && rm -rf dist/food && cp -R public/food dist/food",
     "dev": "concurrently \"cross-env NODE_ENV=development webpack-dev-server --open --hot\" \"nodemon server/index.js\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
     "eslint": "^8.54.0",
     "mongoose": "^8.0.1",
     "path": "^0.12.7",
     "react": "^18.2.0",
     "react-audio-player": "^0.17.0",
     "react-dom": "^18.2.0",
+    "react-easy-crop": "^5.5.7",
     "react-player": "^2.13.0",
     "react-style-tag": "^3.0.1",
     "use-sound": "^4.0.1"

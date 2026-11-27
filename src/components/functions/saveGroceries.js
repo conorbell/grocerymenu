@@ -1,14 +1,8 @@
-export const saveGroceries = (groceries) => {
-  console.log('api groceries', groceries);
-
-  fetch('/api/list', {
+export const saveGroceries = async (groceries) => {
+  const res = await fetch('/api/list', {
     method: 'POST',
-    headers: {
-      'Content-type': 'application/json',
-    },
-    body: JSON.stringify(),
-  })
-    .then((r) => r.json())
-
-    .then((data) => console.log('data', data));
+    headers: { 'Content-type': 'application/json' },
+    body: JSON.stringify({ data: groceries.map((item) => item.name) }),
+  });
+  return res.json();
 };

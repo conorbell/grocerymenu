@@ -43,12 +43,7 @@ router.post(
   authController.verifyUser,
   authController.setCookie,
   (req, res) => {
-    console.log('request made it to backend');
-    if (res.status === 200) {
-      res.status(200).json({ message: 'Login successful' });
-    } else {
-      res.json({ message: 'failed to login' });
-    }
+    res.status(200).json({ message: 'Login successful' });
   }
 );
 

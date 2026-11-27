@@ -5,7 +5,7 @@ const mealDirectorySchema = new mongoose.Schema({
   title: { type: String, required: true },
   category: { type: String, required: true },
   img: { type: String },
-  ingredients: { type: [String] }, // Assuming ingredients is an array of strings
+  ingredients: { type: [mongoose.Schema.Types.Mixed] }, // strings or { name, quantity, unit }
 });
 
 const groceryList = new Schema({

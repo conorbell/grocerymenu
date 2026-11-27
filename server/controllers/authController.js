@@ -1,42 +1,35 @@
 const authController = {};
-//verify user controller
-authController.verifyUser = async (req, res, next) => {
-  //destructure user and pass from req.body
-  const { user, pass } = req.body;
-  console.log('user', user);
-  console.log('pass', pass);
-  //try catch block
-  try {
-    //if user
-    if (
-      (user === 'chiquita banana' && pass === 'chiquitabanana') ||
-      (user === 'c' && pass === 'c')
-    ) {
-      return next();
-    } else {
-      return next({
-        log: 'Unsuccessful login attempt',
-        status: 400,
-        message: { err: 'Unsucessful login attempt' },
-      });
-    }
-  } catch (err) {
-    return next(err);
-  }
+
+const TOKEN = 'poN&p75';
+
+const readCookie = (req, name) => {
+  const header = req.headers.cookie || '';
+  const match = header
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : undefined;
 };
 
-authController.setCookie = async (req, res, next) => {
-  res.cookie('token', 'poN&p75');
+authController.verifyUser = (req, res, next) => {
+  const { user, pass } = req.body || {};
+  if (
+    (user === 'chiquita banana' && pass === 'chiquitabanana') ||
+    (user === 'c' && pass === 'c')
+  ) {
+    return next();
+  }
+  return res.status(401).json({ message: 'Wrong username or password' });
+};
+
+authController.setCookie = (req, res, next) => {
+  res.cookie('token', TOKEN, { httpOnly: true, sameSite: 'lax' });
   return next();
 };
 
-authController.verifyCookie = async (req, res, next) => {
-  const { token } = req.cookies;
-  if (token === 'poN&p75') {
-    return next();
-  } else {
-    return res.status(400).json('please login to view this page');
-  }
+authController.verifyCookie = (req, res, next) => {
+  if (readCookie(req, 'token') === TOKEN) return next();
+  return res.status(401).json({ message: 'Please log in first' });
 };
 
 module.exports = authController;

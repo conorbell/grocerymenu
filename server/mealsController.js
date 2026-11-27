@@ -1,46 +1,30 @@
+const mongoose = require('mongoose');
 const { MealDirectory } = require('./models');
+const fallbackMeals = require('./data/meals.json');
 
 const mealsController = {};
 
-//get meals middleware
-mealsController.getBreakfast = async (req, res, next) => {
-  try {
-    const breakfast = await MealDirectory.find({
-      category: 'breakfast',
-    });
-
-    res.locals.breakfast = breakfast;
-    return next();
-  } catch (err) {
-    return next(err);
+// When the database is unreachable, serve the bundled meals.json instead so
+// the menus still work.
+const getMeals = async (category) => {
+  if (mongoose.connection.readyState === 1) {
+    const meals = await MealDirectory.find({ category }).lean();
+    if (meals.length) return meals;
   }
+  return fallbackMeals.filter((meal) => meal.category === category);
 };
-mealsController.getLunch = async (req, res, next) => {
-  try {
-    const lunch = await MealDirectory.find({
-      category: 'lunch',
-    });
 
-    res.locals.lunch = lunch;
-    return next();
-  } catch (err) {
-    return next(err);
-  }
-};
-mealsController.getDinner = async (req, res, next) => {
+const makeHandler = (category) => async (req, res, next) => {
   try {
-    const dinner = await MealDirectory.find({
-      category: 'dinner',
-    });
-
-    res.locals.dinner = dinner;
+    res.locals[category] = await getMeals(category);
     return next();
   } catch (err) {
     return next(err);
   }
 };
 
-// mealsController.addMeals = (req, res, next) => {
+mealsController.getBreakfast = makeHandler('breakfast');
+mealsController.getLunch = makeHandler('lunch');
+mealsController.getDinner = makeHandler('dinner');
 
-// }
 module.exports = mealsController;

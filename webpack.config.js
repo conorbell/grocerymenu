@@ -1,10 +1,8 @@
 const HtmlWebPackPlugin = require('html-webpack-plugin');
 const path = require('path');
+const webpack = require('webpack');
 require('dotenv').config();
-// const htmlPlugin = new HtmlWebPackPlugin({
-//   template: './src/index.html',
-//   filename: './index.html',
-// });
+
 module.exports = {
   entry: './src/index.js',
   output: {
@@ -15,7 +13,7 @@ module.exports = {
     assetModuleFilename: 'images/[hash][ext][query]',
   }, // NEW Ends
 
-  devtool: 'eval-source-map',
+  devtool: process.env.NODE_ENV === 'production' ? false : 'eval-source-map',
   mode: process.env.NODE_ENV,
   devServer: {
     // enable HMR on the devServer
@@ -38,10 +36,17 @@ module.exports = {
      */
     proxy: {
       '/api': 'http://localhost:3333/',
+      '/food': 'http://localhost:3333/',
     },
   },
 
   plugins: [
+    // Supabase URL + anon key are public by design (row level security
+    // protects the data), so they can be baked into the browser bundle.
+    new webpack.DefinePlugin({
+      'process.env.SUPABASE_URL': JSON.stringify(process.env.SUPABASE_URL || ''),
+      'process.env.SUPABASE_ANON_KEY': JSON.stringify(process.env.SUPABASE_ANON_KEY || ''),
+    }),
     new HtmlWebPackPlugin({
       template: path.resolve(__dirname, './index.html'),
     }),
@@ -60,7 +65,7 @@ module.exports = {
         use: ['style-loader', 'css-loader'],
       },
       {
-        test: /\.(png|jpe?g|gif|eot|mp3)$/i,
+        test: /\.(png|jpe?g|gif|avif|eot|woff2?|ttf|svg|mp3)$/i,
         type: 'asset/resource',
         // use: 'file-loader?name=./images/[name].[ext]',
       },
