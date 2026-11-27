@@ -48,8 +48,7 @@ npm test           # Jest: the Menu / Planned meal rules (src/lib/mealRules.js)
 **Deploy:** `vercel deploy --prod` from the repo root (CLI is logged in). Vercel
 builds `npm run build` → `dist/` (copying `public/food` → `dist/food`) and
 rewrites every non-`/food` path to `index.html`. Supabase env vars are set in the
-Vercel project (Production). **Run `supabase/meals.sql` before deploying** the
-saved-meals version, or the Menu will be empty.
+Vercel project (Production).
 
 **Dev-only preview:** `/user/preview` shows the profile, party HUD, settings,
 stat allocation and a chat demo with sample data, no login needed. Stripped
@@ -110,7 +109,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 
 ---
 
-## Supabase (run in this order; all but `meals.sql` already run)
+## Supabase (all SQL already run, in this order)
 
 | File | Creates |
 |---|---|
@@ -119,7 +118,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 | `profile_stats.sql` | lifetime counters + `bump_my_stats()` RPC |
 | `stat_points.sql` | `profiles.stat_points` jsonb |
 | `chat.sql` | `messages`, `chat_reads`, realtime |
-| `meals.sql` | **not run yet**: `meals` + seed of the 11 originals, `planned_meals.meal_id/servings`, favourites → ids, `meals_created` stat, `meal-photos` bucket |
+| `meals.sql` | `meals` + seed of the 11 originals, `planned_meals.meal_id/servings`, favourites → ids, `meals_created` stat, `meal-photos` bucket |
 
 - Two accounts exist (Conor and Melissa). **Sign-ups are disabled**; add users in
   the dashboard (Authentication → Users → Add user, "Auto Confirm").
@@ -161,10 +160,9 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 ## Known issues / next steps (prioritised)
 
 1. **Back up the code** (see git section above).
-2. **Run `supabase/meals.sql`**, then test saved meals with both accounts
-   (create, edit, delete, plan, servings stepper, edit a planned meal, live
-   update on the other phone), then deploy. Spec:
-   `.scratch/save-custom-meals/spec.md`.
+2. **Saved meals is live** (deployed 2026-11-27, spec in
+   `.scratch/save-custom-meals/`). Still untested by hand: adding a photo to a
+   Meal, and live updates between the two phones.
 3. **Clean up `styles.css`**: many sections are defined twice (later override
    wins: `.profile`, `.site-header`, `.party__frames`, nav labels…). Merge,
    delete dead styles (old chat/ticket variants). Keep the no-radius rule last.
