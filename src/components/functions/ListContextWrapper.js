@@ -9,56 +9,34 @@ import React, {
 } from 'react';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/image';
+import {
+  validateMeal,
+  planMeal as planMealRule,
+  editPlannedMeal,
+  rescalePlannedMeal,
+  menuByCategory,
+  toItem,
+  round,
+  newId,
+} from '../../lib/mealRules';
 
 /*
- * The meal plan + grocery list.
+ * The Menu, the meal plan and the shopping list, shared live between
+ * everyone logged in (see GLOSSARY.md for the terms).
  *
- * Data model (same shape locally and in Supabase):
- *   meals: [{ id, title }]
- *   items: [{ id, name, quantity, unit, checked, planned_meal_id }]
- * An item with planned_meal_id came from that meal and goes away with it;
- * planned_meal_id === null means a standalone item ("paper towels").
+ *   menu:         Meals [{ id, title, category, servings, recipe_url, photo_url, ingredients }]
+ *   plannedMeals: [{ id, title, meal_id, servings }]  (copies of Meals, ADR-0001)
+ *   items:        [{ id, name, quantity, unit, checked, planned_meal_id }]
+ * An item with planned_meal_id came from that Planned meal and goes away with
+ * it; planned_meal_id === null means an Extra item ("paper towels").
  *
- * Logged out (or Supabase not configured): stored in this browser.
- * Logged in: stored in Supabase and shared live between everyone logged in.
+ * Everything needs you to be logged in: logged out there is no Menu or list.
  */
 
-const STORAGE_KEY = 'grocerymenu:lists:v2';
-const OLD_STORAGE_KEY = 'grocerymenu:lists';
-const EMPTY = { meals: [], items: [] };
+const EMPTY = { plannedMeals: [], items: [] };
+const MEAL_PHOTOS = 'meal-photos';
 
 const ListContext = createContext();
-
-const newId = () =>
-  typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-const round = (n) => Math.round(n * 100) / 100;
-
-const extractQuantity = (text) => {
-  const match = String(text).match(/\d+/);
-  return match ? parseInt(match[0], 10) : 1;
-};
-
-// Ingredients can be strings ("2 small potatoes") or { name, quantity, unit }.
-const toItem = (ingredient, multiplier = 1, plannedMealId = null) => {
-  const isObject = ingredient && typeof ingredient === 'object';
-  const name = String(isObject ? ingredient.name || '' : ingredient).trim();
-  const quantity = isObject
-    ? Number(ingredient.quantity) > 0
-      ? Number(ingredient.quantity)
-      : 1
-    : extractQuantity(name);
-  return {
-    id: newId(),
-    name,
-    unit: isObject ? String(ingredient.unit || '').trim() : '',
-    quantity: round(quantity * multiplier),
-    checked: false,
-    planned_meal_id: plannedMealId,
-  };
-};
 
 const groupKey = (item) => `${item.name.toLowerCase()}|${item.unit || ''}`;
 
@@ -71,51 +49,37 @@ export const formatAmount = ({ quantity, unit }) => {
   return `${quantity} ${unit}${plural ? (unit === 'bunch' ? 'es' : 's') : ''}`;
 };
 
-// ---------- browser storage ----------
-const loadLocal = () => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && Array.isArray(saved.meals) && Array.isArray(saved.items)) return saved;
-
-    // Migrate the older { mealList: [titles], groceryList: [{name,quantity,unit}] } format.
-    const old = JSON.parse(localStorage.getItem(OLD_STORAGE_KEY));
-    if (old) {
-      return {
-        meals: (old.mealList || []).map((title) => ({ id: newId(), title })),
-        // Old lists never recorded which meal an item came from; mark them so
-        // they aren't shown as standalone "extra" items.
-        items: (old.groceryList || []).map((g) => ({ ...toItem(g), legacy: true })),
-      };
-    }
-  } catch {
-    // ignore unreadable storage
-  }
-  return EMPTY;
-};
-
-const saveLocal = (data) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // storage unavailable (private mode etc.) - lists just won't persist
-  }
-};
-
 // ---------- Supabase ----------
 const fetchShared = async () => {
-  const [meals, items] = await Promise.all([
-    supabase.from('planned_meals').select('id, title').order('created_at'),
+  const [plannedMeals, items] = await Promise.all([
+    supabase.from('planned_meals').select('id, title, meal_id, servings').order('created_at'),
     supabase
       .from('grocery_items')
       .select('id, name, quantity, unit, checked, planned_meal_id, added_by')
       .order('created_at'),
   ]);
-  if (meals.error) throw meals.error;
+  if (plannedMeals.error) throw plannedMeals.error;
   if (items.error) throw items.error;
   return {
-    meals: meals.data,
+    plannedMeals: plannedMeals.data,
     items: items.data.map((item) => ({ ...item, quantity: Number(item.quantity) })),
   };
+};
+
+const fetchMenu = async () => {
+  const { data, error } = await supabase
+    .from('meals')
+    .select('id, title, category, servings, recipe_url, photo_url, ingredients');
+  if (error) throw error;
+  return data;
+};
+
+// Storage path of one of our uploaded photo URLs, or null for anything else
+// (e.g. the original menu photos served by the site from /food).
+const storagePath = (bucket, url) => {
+  const marker = `/object/public/${bucket}/`;
+  const i = url ? url.indexOf(marker) : -1;
+  return i === -1 ? null : decodeURIComponent(url.slice(i + marker.length).split('?')[0]);
 };
 
 // Profiles are cached on the device so names/photos show instantly on the
@@ -141,8 +105,9 @@ const saveCachedProfiles = (rows) => {
 const ListProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(!supabase);
-  const [localData, setLocalData] = useState(loadLocal);
   const [sharedData, setSharedData] = useState(EMPTY);
+  const [menu, setMenu] = useState([]);
+  const [menuStatus, setMenuStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [syncError, setSyncError] = useState(null);
   const [profiles, setProfiles] = useState(loadCachedProfiles);
   // true once we have profiles from the cache or from Supabase
@@ -152,10 +117,8 @@ const ListProvider = ({ children }) => {
   const refetchTimer = useRef(null);
 
   const shared = Boolean(supabase && session);
-  const data = shared ? sharedData : localData;
-  const setData = shared ? setSharedData : setLocalData;
-
-  useEffect(() => saveLocal(localData), [localData]);
+  const data = shared ? sharedData : EMPTY;
+  const setData = setSharedData;
 
   // ---- auth ----
   useEffect(() => {
@@ -175,6 +138,17 @@ const ListProvider = ({ children }) => {
     } catch (err) {
       console.error(err);
       setSyncError(err.message || 'Could not load the shared list');
+    }
+  }, []);
+
+  const refreshMenu = useCallback(async () => {
+    try {
+      setMenu(await fetchMenu());
+      setMenuStatus('ready');
+    } catch (err) {
+      // e.g. supabase/meals.sql hasn't been run yet
+      console.error(err);
+      setMenuStatus('error');
     }
   }, []);
 
@@ -203,10 +177,14 @@ const ListProvider = ({ children }) => {
         setProfiles([]);
         setProfilesLoaded(false);
         saveCachedProfiles(null);
+        setSharedData(EMPTY);
+        setMenu([]);
+        setMenuStatus('loading');
       }
       return undefined;
     }
     refresh();
+    refreshMenu();
     refreshProfiles();
     const scheduleRefresh = () => {
       clearTimeout(refetchTimer.current);
@@ -216,13 +194,14 @@ const ListProvider = ({ children }) => {
       .channel('household-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'planned_meals' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'grocery_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meals' }, () => refreshMenu())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => refreshProfiles())
       .subscribe();
     return () => {
       clearTimeout(refetchTimer.current);
       supabase.removeChannel(channel);
     };
-  }, [shared, authReady, refresh, refreshProfiles]);
+  }, [shared, authReady, refresh, refreshMenu, refreshProfiles]);
 
   // ---- who's online right now (Supabase Presence) ----
   useEffect(() => {
@@ -260,9 +239,9 @@ const ListProvider = ({ children }) => {
 
   // Lifetime counters for the character sheet (supabase/profile_stats.sql).
   // Only counted on the shared list; failures are harmless.
-  const bumpStats = ({ meals = 0, added = 0, ticked = 0 }) => {
+  const bumpStats = ({ meals = 0, added = 0, ticked = 0, created = 0 }) => {
     const me = session?.user?.id;
-    if (!shared || !me || (!meals && !added && !ticked)) return;
+    if (!shared || !me || (!meals && !added && !ticked && !created)) return;
     setProfiles((prev) =>
       prev.map((p) =>
         p.id === me
@@ -271,54 +250,165 @@ const ListProvider = ({ children }) => {
               meals_planned: (p.meals_planned || 0) + meals,
               items_added: (p.items_added || 0) + added,
               items_ticked: (p.items_ticked || 0) + ticked,
+              meals_created: (p.meals_created || 0) + created,
             }
           : p
       )
     );
-    supabase.rpc('bump_my_stats', { meals, added, ticked }).then(({ error }) => {
-      if (error) console.warn('Stats not counted (has profile_stats.sql been run?):', error.message);
+    supabase.rpc('bump_my_stats', { meals, added, ticked, created }).then(({ error }) => {
+      if (error) console.warn('Stats not counted (have profile_stats.sql and meals.sql been run?):', error.message);
     });
   };
 
-  // ---- actions ----
-  const addMeal = (title, ingredients = [], multiplier = 1) => {
-    const meal = { id: newId(), title };
-    const newItems = ingredients
-      .flat(Infinity)
-      .map((ing) => toItem(ing, multiplier, meal.id))
-      .filter((item) => item.name);
-    setData((prev) => ({ meals: [...prev.meals, meal], items: [...prev.items, ...newItems] }));
-    remote(async () => {
-      const res = await supabase.from('planned_meals').insert(meal);
-      if (res.error || !newItems.length) return res;
-      return supabase.from('grocery_items').insert(newItems);
-    });
-    bumpStats({ meals: 1, added: newItems.length });
+  const userId = session?.user?.id;
+
+  // ---- the Menu ----
+  // Upload a cropped JPEG as a Meal's photo; returns its public URL.
+  const uploadMealPhoto = async (mealId, blob) => {
+    const path = `${mealId}/${Date.now()}.jpg`;
+    const { error } = await supabase.storage
+      .from(MEAL_PHOTOS)
+      .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+    if (error) throw error;
+    return supabase.storage.from(MEAL_PHOTOS).getPublicUrl(path).data.publicUrl;
   };
 
-  // Standalone items (not tied to a meal).
-  const addToGroceryList = (ingredients = [], multiplier = 1) => {
-    const newItems = ingredients
-      .flat(Infinity)
-      .map((ing) => toItem(ing, multiplier, null))
-      .filter((item) => item.name);
-    if (!newItems.length) return;
-    setData((prev) => ({ ...prev, items: [...prev.items, ...newItems] }));
-    remote(() => supabase.from('grocery_items').insert(newItems));
-    bumpStats({ added: newItems.length });
+  // Tidy up a photo we uploaded (original /food photos are left alone).
+  const removeStoredPhoto = (url) => {
+    const path = storagePath(MEAL_PHOTOS, url);
+    if (path) supabase.storage.from(MEAL_PHOTOS).remove([path]);
   };
 
-  const addItem = (item) => addToGroceryList([item]);
+  // Create (no draft.id) or update a Meal. `photo`: a cropped JPEG Blob to
+  // use, null to remove the photo, undefined to leave it as it is.
+  // Returns { ok, meal } or { ok: false, problems: [...] }.
+  const saveMeal = async (draft, { photo } = {}) => {
+    if (!shared) return { ok: false, problems: ['Log in to change the menu.'] };
+    const problems = validateMeal(draft, menu);
+    if (problems.length) return { ok: false, problems };
+    const existing = draft.id ? menu.find((meal) => meal.id === draft.id) : null;
+    const id = existing ? existing.id : newId();
+    const row = {
+      id,
+      title: draft.title.trim(),
+      category: draft.category,
+      servings: Math.max(1, Math.round(Number(draft.servings) || 1)),
+      recipe_url: draft.recipe_url?.trim() || null,
+      photo_url: existing ? existing.photo_url : null,
+      ingredients: draft.ingredients
+        .filter((ing) => String(ing.name || '').trim())
+        .map((ing) => ({
+          name: ing.name.trim(),
+          quantity: round(Number(ing.quantity) > 0 ? Number(ing.quantity) : 1),
+          unit: String(ing.unit || '').trim(),
+        })),
+    };
+    try {
+      if (photo) row.photo_url = await uploadMealPhoto(id, photo);
+      else if (photo === null) row.photo_url = null;
+    } catch (err) {
+      return { ok: false, problems: [`Photo didn't upload: ${err.message}`] };
+    }
+    const { error } = existing
+      ? await supabase.from('meals').update(row).eq('id', id)
+      : await supabase.from('meals').insert(row);
+    if (error) {
+      console.error(error);
+      if (photo) removeStoredPhoto(row.photo_url);
+      const message = error.code === '23505' ? `${row.title} is already on the menu.` : error.message;
+      return { ok: false, problems: [message] };
+    }
+    if (existing && existing.photo_url !== row.photo_url) removeStoredPhoto(existing.photo_url);
+    setMenu((prev) => [...prev.filter((meal) => meal.id !== id), row]);
+    if (!existing) bumpStats({ created: 1 });
+    return { ok: true, meal: row };
+  };
 
-  const removeMeal = (index) => {
-    const meal = data.meals[index];
-    if (!meal) return;
+  // Planned meals of it stay on the list (ADR-0001); favourites of it are
+  // cleared by the database.
+  const deleteMeal = async (meal) => {
+    const { error } = await supabase.from('meals').delete().eq('id', meal.id);
+    if (error) return { ok: false, message: error.message };
+    removeStoredPhoto(meal.photo_url);
+    setMenu((prev) => prev.filter((m) => m.id !== meal.id));
+    setProfiles((prev) =>
+      prev.map((p) => (p.favorites?.includes(meal.id) ? { ...p, favorites: p.favorites.filter((f) => f !== meal.id) } : p))
+    );
+    return { ok: true };
+  };
+
+  // ---- the list ----
+  // Put a Meal on the list for `servings`. Returns { ok } or, when it's
+  // already there, { alreadyPlanned } (a Meal is planned at most once).
+  const planMeal = (meal, servings = meal.servings) => {
+    const result = planMealRule(meal, servings, data.plannedMeals);
+    if (result.alreadyPlanned) return result;
+    const { plannedMeal, items } = result;
     setData((prev) => ({
-      meals: prev.meals.filter((m) => m.id !== meal.id),
-      items: prev.items.filter((item) => item.planned_meal_id !== meal.id),
+      plannedMeals: [...prev.plannedMeals, plannedMeal],
+      items: [...prev.items, ...items],
+    }));
+    remote(async () => {
+      const res = await supabase.from('planned_meals').insert(plannedMeal);
+      if (res.error || !items.length) return res;
+      return supabase.from('grocery_items').insert(items);
+    });
+    bumpStats({ meals: 1, added: items.length });
+    return { ok: true, plannedMeal };
+  };
+
+  const itemsOf = (plannedMeal) => data.items.filter((item) => item.planned_meal_id === plannedMeal.id);
+
+  // Save the Planned meal edit form ({ servings, rows }). Never touches the Meal.
+  const updatePlannedMeal = (plannedMeal, changes) => {
+    const edit = editPlannedMeal(plannedMeal, itemsOf(plannedMeal), changes);
+    const updated = new Map(edit.updates.map((item) => [item.id, item]));
+    const deleted = new Set(edit.deletes);
+    setData((prev) => ({
+      plannedMeals: prev.plannedMeals.map((p) => (p.id === plannedMeal.id ? edit.plannedMeal : p)),
+      items: [
+        ...prev.items.filter((item) => !deleted.has(item.id)).map((item) => updated.get(item.id) || item),
+        ...edit.inserts,
+      ],
+    }));
+    remote(async () => {
+      const writes = [];
+      if (edit.plannedMeal.servings !== plannedMeal.servings) {
+        writes.push(supabase.from('planned_meals').update({ servings: edit.plannedMeal.servings }).eq('id', plannedMeal.id));
+      }
+      if (edit.deletes.length) writes.push(supabase.from('grocery_items').delete().in('id', edit.deletes));
+      if (edit.inserts.length) writes.push(supabase.from('grocery_items').insert(edit.inserts));
+      edit.updates.forEach(({ id, name, quantity, unit }) =>
+        writes.push(supabase.from('grocery_items').update({ name, quantity, unit }).eq('id', id))
+      );
+      const results = await Promise.all(writes);
+      return results.find((res) => res.error) || { error: null };
+    });
+    if (edit.inserts.length) bumpStats({ added: edit.inserts.length });
+  };
+
+  // Change how many a Planned meal serves; every quantity scales (ticks kept).
+  const setPlannedServings = (plannedMeal, servings) => {
+    const { items } = rescalePlannedMeal(plannedMeal, itemsOf(plannedMeal), servings);
+    updatePlannedMeal(plannedMeal, { servings, rows: items });
+  };
+
+  // Extra items (not tied to a Planned meal).
+  const addItem = (ingredient) => {
+    const item = toItem(ingredient, 1, null);
+    if (!item.name) return;
+    setData((prev) => ({ ...prev, items: [...prev.items, item] }));
+    remote(() => supabase.from('grocery_items').insert(item));
+    bumpStats({ added: 1 });
+  };
+
+  const removePlannedMeal = (plannedMeal) => {
+    setData((prev) => ({
+      plannedMeals: prev.plannedMeals.filter((m) => m.id !== plannedMeal.id),
+      items: prev.items.filter((item) => item.planned_meal_id !== plannedMeal.id),
     }));
     // grocery items for the meal are removed by ON DELETE CASCADE
-    remote(() => supabase.from('planned_meals').delete().eq('id', meal.id));
+    remote(() => supabase.from('planned_meals').delete().eq('id', plannedMeal.id));
   };
 
   const removeGrocery = (group) => {
@@ -363,7 +453,6 @@ const ListProvider = ({ children }) => {
   const signOut = () => supabase?.auth.signOut();
 
   // ---- profiles ----
-  const userId = session?.user?.id;
   const myProfile = useMemo(() => {
     if (!userId) return null;
     const row = profiles.find((p) => p.id === userId);
@@ -431,21 +520,22 @@ const ListProvider = ({ children }) => {
     }
   };
 
-  const isFavorite = (title) => Boolean(myProfile?.favorites?.includes(title));
+  // Favourites are Meal ids, so they survive renames.
+  const isFavorite = (mealId) => Boolean(myProfile?.favorites?.includes(mealId));
 
-  const toggleFavorite = (title) => {
+  const toggleFavorite = (mealId) => {
     if (!myProfile) return;
     const current = myProfile.favorites || [];
-    const favorites = current.includes(title)
-      ? current.filter((t) => t !== title)
-      : [...current, title];
+    const favorites = current.includes(mealId)
+      ? current.filter((id) => id !== mealId)
+      : [...current, mealId];
     saveProfile({ favorites });
   };
 
-  // Display names of everyone who has favourited a meal.
-  const favoritedBy = (title) =>
+  // Display names of everyone who has favourited a Meal.
+  const favoritedBy = (mealId) =>
     profiles
-      .filter((p) => p.favorites?.includes(title))
+      .filter((p) => p.favorites?.includes(mealId))
       .map((p) => (p.id === userId ? 'you' : p.display_name || 'your party member'));
 
   const updatePassword = async (password) => {
@@ -464,7 +554,7 @@ const ListProvider = ({ children }) => {
         group.quantity = round(group.quantity + item.quantity);
         group.ids.push(item.id);
         group.checked = group.checked && item.checked;
-        group.extra = group.extra || (!item.planned_meal_id && !item.legacy);
+        group.extra = group.extra || !item.planned_meal_id;
       } else {
         groups.set(key, {
           key,
@@ -473,23 +563,34 @@ const ListProvider = ({ children }) => {
           quantity: item.quantity,
           ids: [item.id],
           checked: item.checked,
-          extra: !item.planned_meal_id && !item.legacy,
+          extra: !item.planned_meal_id,
         });
       }
     });
     return [...groups.values()];
   }, [data.items]);
 
+  const menuSorted = useMemo(() => menuByCategory(menu), [menu]);
+
   const value = {
-    // data
-    meals: data.meals,
-    mealList: data.meals.map((meal) => meal.title),
+    // the Menu
+    menu,
+    menuByCategory: menuSorted,
+    menuStatus,
+    mealById: (id) => menu.find((meal) => meal.id === id) || null,
+    saveMeal,
+    deleteMeal,
+    // the list
+    plannedMeals: data.plannedMeals,
+    mealList: data.plannedMeals.map((meal) => meal.title),
+    plannedMealFor: (mealId) => data.plannedMeals.find((p) => p.meal_id === mealId) || null,
+    itemsOf,
     groceryList,
-    // actions
-    addMeal,
-    addToGroceryList,
+    planMeal,
+    updatePlannedMeal,
+    setPlannedServings,
     addItem,
-    removeMeal,
+    removePlannedMeal,
     removeGrocery,
     toggleChecked,
     clearChecked,
@@ -507,7 +608,7 @@ const ListProvider = ({ children }) => {
     mateProfiles,
     onlineIds,
     toBuyCount: groceryList.filter((item) => !item.checked).length,
-    mealCount: data.meals.length,
+    mealCount: data.plannedMeals.length,
     profilesError,
     profilesLoaded,
     saveProfile,

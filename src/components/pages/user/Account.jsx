@@ -1,11 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import Cropper from 'react-easy-crop';
+import React, { useEffect, useState } from 'react';
 import { cropImage } from '../../../lib/image';
 import { Link, Navigate } from 'react-router-dom';
 import { useList } from '../../functions/ListContextWrapper';
 import { HeartIcon } from '../../HeartIcon';
 import { Avatar } from '../../Avatar';
+import { PhotoCropper } from '../../PhotoCropper';
 import { rpgStats, cleanPoints } from '../../../lib/rpgStats';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------- helpers ----------
 const formatDate = (iso) =>
@@ -53,12 +55,13 @@ const Scale = ({ label, value, labels }) => (
   </div>
 );
 
-const Favorites = ({ titles = [], editable, onRemove }) => (
+// `meals`: [{ id, title }] (favourites are stored as Meal ids).
+const Favorites = ({ meals = [], editable, onRemove }) => (
   <div className="favorites">
     <h3 className="section-label">
-      Favourites <span className="section-label__count">{titles.length || ''}</span>
+      Favourites <span className="section-label__count">{meals.length || ''}</span>
     </h3>
-    {titles.length === 0 ? (
+    {meals.length === 0 ? (
       <p className="menu-note">
         {editable ? (
           <>
@@ -71,12 +74,12 @@ const Favorites = ({ titles = [], editable, onRemove }) => (
       </p>
     ) : (
       <ul className="menu-list">
-        {titles.map((title) => (
-          <li key={title} className="list-row">
+        {meals.map(({ id, title }) => (
+          <li key={id} className="list-row">
             <span className="list-row__name">{title}</span>
             <span className="leader" aria-hidden="true" />
             {editable ? (
-              <button className="heart is-on" aria-label={`Remove ${title} from favourites`} onClick={() => onRemove(title)}>
+              <button className="heart is-on" aria-label={`Remove ${title} from favourites`} onClick={() => onRemove(id)}>
                 <HeartIcon filled />
               </button>
             ) : (
@@ -116,7 +119,7 @@ export const ProfileCard = ({
   onSaveAllocation,
   onCloseAllocation,
 }) => {
-  const { toBuyCount = 0, mealCount = 0 } = useList();
+  const { toBuyCount = 0, mealCount = 0, mealById } = useList();
   const name = profile.display_name || fallbackName;
   const [draft, setDraft] = useState(null);
   const [allocError, setAllocError] = useState(null);
@@ -279,7 +282,15 @@ export const ProfileCard = ({
             <Scale label="Willingness to cook" value={profile.cook_willingness ?? 5} labels={COOK_LABELS} />
             <Scale label="Willingness to eat" value={profile.eat_willingness ?? 5} labels={EAT_LABELS} />
           </div>
-          <Favorites titles={profile.favorites} editable={mine} onRemove={onRemoveFavorite} />
+          <Favorites
+            meals={(profile.favorites || [])
+              // Meal ids we can't name yet (Menu still loading) are left out;
+              // plain titles only come from the dev preview's sample data.
+              .map((id) => ({ id, title: mealById(id)?.title || (UUID.test(id) ? null : id) }))
+              .filter((fav) => fav.title)}
+            editable={mine}
+            onRemove={onRemoveFavorite}
+          />
         </section>
       </div>
     </article>
@@ -359,61 +370,6 @@ export const Command = ({ to, onClick, children }) =>
       {children}
     </button>
   );
-
-// ---------- photo crop step: drag to reposition, slider/pinch to zoom ----------
-const PhotoCropper = ({ src, initial, onCancel, onDone }) => {
-  const [crop, setCrop] = useState(initial?.crop || { x: 0, y: 0 });
-  const [zoom, setZoom] = useState(initial?.zoom || 1);
-  const [area, setArea] = useState(null);
-  const onCropComplete = useCallback((_percent, pixels) => setArea(pixels), []);
-
-  return (
-    <div className="cell cell--full cell--cropper">
-      <span className="cell__label">Drag to reposition · pinch or slide to zoom</span>
-      <div className="cropper">
-        <Cropper
-          image={src}
-          crop={crop}
-          zoom={zoom}
-          minZoom={1}
-          maxZoom={4}
-          aspect={4 / 5}
-          cropShape="round"
-          showGrid={false}
-          onCropChange={setCrop}
-          onZoomChange={setZoom}
-          onCropComplete={onCropComplete}
-        />
-      </div>
-      <div className="cropper__controls">
-        <span className="cropper__zoom-label" aria-hidden="true">−</span>
-        <input
-          type="range"
-          min="1"
-          max="4"
-          step="0.01"
-          value={zoom}
-          aria-label="Zoom"
-          onChange={(e) => setZoom(Number(e.target.value))}
-        />
-        <span className="cropper__zoom-label" aria-hidden="true">+</span>
-      </div>
-      <div className="cropper__actions">
-        <button type="button" className="text-btn" onClick={onCancel}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="pill"
-          disabled={!area}
-          onClick={() => onDone({ area, crop, zoom })}
-        >
-          Use photo
-        </button>
-      </div>
-    </div>
-  );
-};
 
 // ---------- edit form (same ruled-ticket style as Create meal) ----------
 export const EditProfile = ({ profile, fallbackName, onClose }) => {

@@ -2795,6 +2795,148 @@ main {
   text-overflow: clip;
 }
 
+/* ---------- Saved Meals: menu row tools, meal ticket extras ---------- */
+.menu-row {
+  flex-wrap: wrap;
+}
+
+.menu-row__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  flex-basis: 100%;
+  order: 3;
+  margin: -2px 0 8px;
+  font-size: 13px;
+}
+
+.menu-row__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.menu-row__note {
+  flex-basis: 100%;
+  font-style: italic;
+}
+
+/* − 2 + : boxed, ruled like the ticket */
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stepper__label {
+  align-self: center;
+  margin-right: 8px;
+}
+
+.stepper__btn,
+.stepper__value {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  border: 1.5px solid currentColor;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.stepper__value {
+  border-left: 0;
+  border-right: 0;
+  font-family: var(--serif);
+  font-size: 15px;
+}
+
+.stepper__btn {
+  cursor: pointer;
+}
+
+.stepper__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.list-row__meta {
+  flex: none;
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.list-row__edit {
+  flex: none;
+  margin-right: 8px;
+  font-size: 13px;
+}
+
+.cell .select-wrap {
+  flex: 1;
+}
+
+.cell .select-wrap select {
+  font-size: 20px;
+  text-transform: capitalize;
+}
+
+.meal-photo {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border: 2px solid var(--ticket-ink);
+}
+
+.cell--check {
+  justify-content: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.cell--check input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  accent-color: var(--ticket-ink);
+}
+
+.ticket__delete {
+  justify-content: center;
+  border-top: 0;
+  border-left: 0;
+  background: #fff;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b6412f;
+  cursor: pointer;
+}
+
+.ticket__delete:hover {
+  background: #b6412f;
+  color: #fff;
+}
+
 /* ---------- House rule: no rounded corners anywhere ----------
    (photo ovals are a soft mask, not a border radius, so they stay) */
 *,

@@ -5,6 +5,7 @@ import Al from '../../public/hoo-ah-a.mp3';
 import fiya from '../../public/dickfire.mp3';
 import { useList } from '../components/functions/ListContextWrapper';
 import { CreateMeal } from '../components/CreateMeal';
+import { CATEGORIES as CATEGORY_KEYS } from '../lib/mealRules';
 import { ChatPanel } from '../components/ChatPanel';
 import { useChat } from '../components/functions/ChatContext';
 
@@ -108,7 +109,6 @@ export const RootLayout = () => {
     mealList,
     user,
     shared,
-    sharingAvailable,
     syncError,
     myProfile,
     profilesLoaded,
@@ -158,7 +158,7 @@ export const RootLayout = () => {
                 ? myProfile?.display_name || (profilesLoaded ? 'Profile' : '\u00a0')
                 : 'Log in'
             }
-            sub={shared ? 'shared list' : sharingAvailable ? 'to share' : 'this browser'}
+            sub={shared ? 'shared list' : 'to see the menu'}
             onMouseEnter={playDick}
           />
         </nav>
@@ -183,19 +183,27 @@ export const RootLayout = () => {
         >
           <SoundIcon muted={!soundOn} />
         </button>
-        <button
-          className="text-btn"
-          onClick={() => setShowCreate(true)}
-          aria-haspopup="dialog"
-        >
-          + Create meal
-        </button>
+        {user && (
+          <button
+            className="text-btn"
+            onClick={() => setShowCreate(true)}
+            aria-haspopup="dialog"
+          >
+            + Create meal
+          </button>
+        )}
       </div>
 
       <ChatFab />
       <ChatPanel />
 
-      {showCreate && <CreateMeal onClose={closeCreate} />}
+      {showCreate && (
+        <CreateMeal
+          // on a breakfast/lunch/dinner page, new Meals default to that Category
+          defaultCategory={CATEGORY_KEYS.find((key) => pathname === `/${key}`) || ''}
+          onClose={closeCreate}
+        />
+      )}
 
       <div className="caption" aria-live="polite">
         {caption && (

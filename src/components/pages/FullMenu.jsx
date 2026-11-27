@@ -1,16 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useList } from '../functions/ListContextWrapper';
-import { useAllMeals, CATEGORIES } from '../../lib/useAllMeals';
+import { CATEGORIES } from '../../lib/menuPages';
+import { SignInPrompt } from '../SignInPrompt';
 import { HeartIcon } from '../HeartIcon';
 import { ingredientLabel } from '../../lib/ingredients';
 
 // The whole menu at a glance (read-only). Each section links to its page
 // for adding dishes to the list.
 const FullMenu = () => {
-  const { status, byCategory } = useAllMeals();
-  const { mealList, myProfile } = useList();
+  const { authReady, user, menuStatus: status, menuByCategory: byCategory, plannedMealFor, myProfile } = useList();
   const favorites = myProfile?.favorites || [];
+
+  if (authReady && !user) return <SignInPrompt heading="MENU" />;
 
   return (
     <section className="page full-menu">
@@ -19,7 +21,7 @@ const FullMenu = () => {
 
       {status === 'loading' && <p className="menu-note">Loading the menu…</p>}
       {status === 'error' && (
-        <p className="menu-note">Couldn't load the menu. Is the server running?</p>
+        <p className="menu-note">Couldn't load the menu. Has supabase/meals.sql been run?</p>
       )}
 
       <div className="full-menu__sections">
@@ -35,10 +37,10 @@ const FullMenu = () => {
               </h2>
               <ul className="menu-list">
                 {meals.map((meal) => {
-                  const planned = mealList.filter((t) => t === meal.title).length;
-                  const fav = favorites.includes(meal.title);
+                  const planned = plannedMealFor(meal.id);
+                  const fav = favorites.includes(meal.id);
                   return (
-                    <li key={meal._id || meal.id || meal.title} className="full-menu__row">
+                    <li key={meal.id} className="full-menu__row">
                       <span className="menu-row__line">
                         <span className="menu-row__name">{meal.title}</span>
                         {fav && (
@@ -48,7 +50,7 @@ const FullMenu = () => {
                         )}
                         <span className="leader" aria-hidden="true" />
                         <span className="menu-row__action">
-                          {planned ? `on list${planned > 1 ? ` ×${planned}` : ''}` : ''}
+                          {planned ? 'on list' : ''}
                         </span>
                       </span>
                       <span className="menu-row__ingredients">{meal.ingredients.map(ingredientLabel).join(' · ')}</span>

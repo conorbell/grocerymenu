@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon server/index.js",
     "build": "cross-env NODE_ENV=production webpack && rm -rf dist/food && cp -R public/food dist/food",
-    "dev": "concurrently \"cross-env NODE_ENV=development webpack-dev-server --open --hot\" \"nodemon server/index.js\""
+    "dev": "cross-env NODE_ENV=development webpack-dev-server --open --hot",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -51,5 +51,11 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1",
     "webpack-hot-middleware": "^2.25.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src"
+    ]
   }
 }

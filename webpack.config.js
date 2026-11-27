@@ -21,23 +21,12 @@ module.exports = {
     // fallback to root for other urls
     historyApiFallback: true,
 
-    static: {
+    static: [
       // match the output path
-      publicPath: '/',
-      directory: path.resolve(__dirname, 'dist'),
-      // match the output 'publicPath'
-    },
-
-    /**
-     * proxy is required in order to make api calls to
-     * express server while using hot-reload webpack server
-     * routes api fetch requests from localhost:8080/api/* (webpack dev server)
-     * to localhost:3000/api/* (where our Express server is running)
-     */
-    proxy: {
-      '/api': 'http://localhost:3333/',
-      '/food': 'http://localhost:3333/',
-    },
+      { publicPath: '/', directory: path.resolve(__dirname, 'dist') },
+      // the original menu photos (the build copies them into dist/food)
+      { publicPath: '/food', directory: path.resolve(__dirname, 'public/food') },
+    ],
   },
 
   plugins: [

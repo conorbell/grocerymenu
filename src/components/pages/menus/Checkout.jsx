@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useList, formatAmount } from '../../functions/ListContextWrapper';
 import { UNITS } from '../../../lib/units';
 import { buildShareText, shareList } from '../../../lib/shareList';
+import { EditPlannedMeal } from '../../CreateMeal';
+import { SignInPrompt } from '../../SignInPrompt';
 
 const ShareIcon = () => (
   <svg className="pill__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -66,16 +68,18 @@ const Checkout = () => {
   const {
     groceryList,
     mealList,
+    plannedMeals,
     removeGrocery,
-    removeMeal,
+    removePlannedMeal,
     toggleChecked,
     clearChecked,
     clearLists,
-    shared,
-    sharingAvailable,
+    authReady,
+    user,
   } = useList();
   const tickedCount = groceryList.filter((item) => item.checked).length;
   const [shareStatus, setShareStatus] = useState(null);
+  const [editing, setEditing] = useState(null);
 
   const handleShare = async () => {
     const result = await shareList(buildShareText(groceryList, mealList));
@@ -88,26 +92,14 @@ const Checkout = () => {
       setTimeout(() => setShareStatus(null), 2500);
     }
   };
-  const isEmpty = mealList.length === 0 && groceryList.length === 0;
+  const isEmpty = plannedMeals.length === 0 && groceryList.length === 0;
+
+  if (authReady && !user) return <SignInPrompt heading="LIST" />;
 
   return (
     <section className="page">
       <h1 className="display">LIST</h1>
-      <p className="list-mode">
-        {shared ? (
-          'Shared list · updates live for both of you'
-        ) : (
-          <>
-            Saved in this browser only
-            {sharingAvailable && (
-              <>
-                {' · '}
-                <Link to="/user/login">log in to share it</Link>
-              </>
-            )}
-          </>
-        )}
-      </p>
+      <p className="list-mode">Shared list · updates live for both of you</p>
 
       {groceryList.length > 0 && (
         <div className="share-bar">
@@ -166,9 +158,9 @@ const Checkout = () => {
 
         <div className="checkout__col">
           <h2 className="section-label">
-            Meals <span className="section-label__count">{mealList.length || ''}</span>
+            Meals <span className="section-label__count">{plannedMeals.length || ''}</span>
           </h2>
-          {mealList.length === 0 ? (
+          {plannedMeals.length === 0 ? (
             <p className="menu-note">
               No meals yet. Have a look at <Link to="/breakfast">breakfast</Link>,{' '}
               <Link to="/lunch">lunch</Link> or <Link to="/dinner">dinner</Link>.
@@ -176,15 +168,23 @@ const Checkout = () => {
           ) : (
             <>
               <ul className="menu-list">
-                {mealList.map((meal, i) => (
-                  <li key={`meal${i}`} className="list-row">
-                    <span className="list-row__name">{meal}</span>
+                {plannedMeals.map((planned) => (
+                  <li key={planned.id} className="list-row">
+                    <span className="list-row__name">{planned.title}</span>
+                    {planned.servings > 0 && <span className="list-row__meta">serves {planned.servings}</span>}
                     <span className="leader" aria-hidden="true" />
                     <button
+                      className="text-btn list-row__edit"
+                      aria-label={`Edit ${planned.title} for this week`}
+                      onClick={() => setEditing(planned)}
+                    >
+                      edit
+                    </button>
+                    <button
                       className="remove-btn"
-                      aria-label={`Remove ${meal} and its ingredients`}
+                      aria-label={`Remove ${planned.title} and its ingredients`}
                       title="Removes the meal and its ingredients"
-                      onClick={() => removeMeal(i)}
+                      onClick={() => removePlannedMeal(planned)}
                     >
                       ×
                     </button>
@@ -195,6 +195,8 @@ const Checkout = () => {
           )}
         </div>
       </div>
+
+      {editing && <EditPlannedMeal plannedMeal={editing} onClose={() => setEditing(null)} />}
 
       {!isEmpty && (
         <div className="center">

@@ -1,7 +1,8 @@
 // RPG-style character sheet numbers, worked out from what you actually do in
 // the app. Tweak the formulas here.
 //
-//   EXP   10 per meal planned, 2 per item added, 1 per item ticked, 5 per favourite
+//   EXP   10 per meal planned, 15 per meal added to the menu, 2 per item added,
+//         1 per item ticked, 5 per favourite
 //   LV    level N needs 50·N·(N−1) EXP  (LV2 = 100, LV3 = 300, LV4 = 600 …)
 //   HP    max from appetite + level; each thing still to buy drains 3
 //   MP    max from cooking + level; each meal still planned drains 4
@@ -56,9 +57,10 @@ export const rpgStats = (profile, { toBuy = 0, mealsPlanned = 0, pointsOverride 
   const meals = n(profile.meals_planned);
   const added = n(profile.items_added);
   const ticked = n(profile.items_ticked);
+  const created = n(profile.meals_created);
   const favs = profile.favorites?.length || 0;
 
-  const exp = meals * 10 + added * 2 + ticked + favs * 5;
+  const exp = meals * 10 + created * 15 + added * 2 + ticked + favs * 5;
   let level = 1;
   while (exp >= expForLevel(level + 1)) level += 1;
   const nextLevelIn = expForLevel(level + 1) - exp;

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useList, formatAmount } from '../functions/ListContextWrapper';
-import { useAllMeals, CATEGORIES } from '../../lib/useAllMeals';
+import { SignInPrompt } from '../SignInPrompt';
 import { ingredientName } from '../../lib/ingredients';
 
 const FILTERS = [
@@ -12,8 +12,7 @@ const FILTERS = [
 // Every grocery item the app knows about (all menu ingredients + anything on
 // your list), ticked if it's on the list. Tap to add / take off.
 const Grocery = () => {
-  const { groceryList, addItem, removeGrocery } = useList();
-  const { status, byCategory } = useAllMeals();
+  const { groceryList, addItem, removeGrocery, menu, menuStatus: status, authReady, user } = useList();
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
 
@@ -26,17 +25,13 @@ const Grocery = () => {
       return items.get(key);
     };
 
-    CATEGORIES.forEach(({ key }) =>
-      (byCategory[key] || []).forEach((meal) =>
-        (meal.ingredients || []).forEach((ing) => ensure(ingredientName(ing)))
-      )
-    );
+    menu.forEach((meal) => (meal.ingredients || []).forEach((ing) => ensure(ingredientName(ing))));
     groceryList.forEach((group) => ensure(group.name)?.groups.push(group));
 
     return [...items.values()].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
-  }, [byCategory, groceryList]);
+  }, [menu, groceryList]);
 
   const onCount = catalog.filter((item) => item.groups.length).length;
 
@@ -50,6 +45,8 @@ const Grocery = () => {
     if (item.groups.length) item.groups.forEach((group) => removeGrocery(group));
     else addItem({ name: item.name, quantity: 1 });
   };
+
+  if (authReady && !user) return <SignInPrompt heading="GROCERY" />;
 
   return (
     <section className="page grocery-page">

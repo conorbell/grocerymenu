@@ -1,7 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "api", "runtimeExecutable": "node", "runtimeArgs": ["server/index.js"], "port": 3333 },
     { "name": "web", "runtimeExecutable": "npx", "runtimeArgs": ["cross-env", "NODE_ENV=development", "webpack-dev-server", "--port", "8080"], "port": 8080 }
   ]
 }
