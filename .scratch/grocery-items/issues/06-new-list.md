@@ -1,6 +1,6 @@
 # 06: New list replaces Start over
 
-Status: ready
+Status: done (2026-11-27)
 Blocked by: 01
 Spec: ../spec.md (stories 21-23)
 

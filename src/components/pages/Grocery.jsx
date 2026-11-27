@@ -1,115 +1,140 @@
 import React, { useMemo, useState } from 'react';
 import { useList } from '../functions/ListContextWrapper';
-import { formatAmount } from '../../lib/list';
+import { groceryView, usualAmount } from '../../lib/groceryItems';
 import { SignInPrompt } from '../SignInPrompt';
-import { ingredientName } from '../../lib/ingredients';
+import { AmountControl } from '../AmountControl';
 
-const FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 'on', label: 'On list' },
-  { key: 'off', label: 'Not on list' },
-];
+// Rename in place: Enter or leaving the field saves, Escape puts it back.
+const RenameField = ({ item, onRename }) => (
+  <input
+    className="grocery-rename"
+    defaultValue={item.name}
+    aria-label={`Rename ${item.name}`}
+    onBlur={(e) => {
+      if (e.target.value.trim() && e.target.value.trim() !== item.name) onRename(item, e.target.value);
+      else e.target.value = item.name;
+    }}
+    onKeyDown={(e) => {
+      if (e.key === 'Escape') e.target.value = item.name;
+      if (e.key === 'Enter' || e.key === 'Escape') e.target.blur();
+    }}
+  />
+);
 
-// Every grocery item the app knows about (all menu ingredients + anything on
-// your list), ticked if it's on the list. Tap to add / take off.
+// Build the list: search (which also adds new things), what's on the list
+// with its amount, then every other Grocery item A–Z. Ticking off happens on
+// the List page. Edit mode renames, merges and removes Grocery items.
 const Grocery = () => {
-  const { groceryList, addItem, removeGrocery, menu, menuStatus: status, authReady, user } = useList();
-  const [filter, setFilter] = useState('all');
+  const { groceryList, groceryItems, addItem, setAmount, renameItem, forgetItem, listLoaded, authReady, user } = useList();
   const [query, setQuery] = useState('');
-
-  const catalog = useMemo(() => {
-    const items = new Map(); // lowercased name -> { key, name, its lines on the list }
-    const ensure = (name) => {
-      const key = name.trim().toLowerCase();
-      if (!key) return null;
-      if (!items.has(key)) items.set(key, { key, name: name.trim(), lines: [] });
-      return items.get(key);
-    };
-
-    menu.forEach((meal) => (meal.ingredients || []).forEach((ing) => ensure(ingredientName(ing))));
-    groceryList.forEach((line) => ensure(line.name)?.lines.push(line));
-
-    return [...items.values()].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    );
-  }, [menu, groceryList]);
-
-  const onCount = catalog.filter((item) => item.lines.length).length;
-
-  const shown = catalog.filter((item) => {
-    if (filter === 'on' && !item.lines.length) return false;
-    if (filter === 'off' && item.lines.length) return false;
-    return !query.trim() || item.key.includes(query.trim().toLowerCase());
-  });
-
-  const toggle = (item) => {
-    if (item.lines.length) item.lines.forEach((line) => removeGrocery(line));
-    else addItem({ name: item.name, quantity: 1 });
-  };
+  const [editing, setEditing] = useState(false);
+  const view = useMemo(
+    () => groceryView(groceryItems, editing ? [] : groceryList, query),
+    [groceryItems, groceryList, query, editing]
+  );
 
   if (authReady && !user) return <SignInPrompt heading="GROCERY" />;
+
+  const addNew = () => {
+    addItem({ name: view.addName, quantity: 1 });
+    setQuery('');
+  };
+
+  // Enter: add the new name, or the one item left in the search.
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editing) return;
+    const candidates = view.letters.flatMap((group) => group.items);
+    if (view.addName) addNew();
+    else if (candidates.length === 1) {
+      addItem(usualAmount(candidates[0]));
+      setQuery('');
+    }
+  };
 
   return (
     <section className="page grocery-page">
       <h1 className="display">GROCERY</h1>
       <p className="list-mode">
-        {status === 'ready'
-          ? `${onCount} on your list · ${catalog.length - onCount} not yet · tap to add or remove`
-          : status === 'error'
-          ? "Couldn't load the menu, so only items on your list are shown."
-          : 'Loading…'}
+        {!listLoaded
+          ? 'Loading…'
+          : editing
+          ? 'Rename to tidy up (a name that exists merges the two) · ✕ removes it from here'
+          : `${groceryList.length} on your list · tap anything to add it`}
       </p>
 
-      <div className="grocery-tools">
-        <div className="filter-tabs" role="tablist" aria-label="Show">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              role="tab"
-              aria-selected={filter === f.key}
-              className={`filter-tab${filter === f.key ? ' is-active' : ''}`}
-              onClick={() => setFilter(f.key)}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <form className="grocery-tools" onSubmit={handleSubmit} role="search">
         <input
           className="grocery-search"
           type="search"
-          placeholder="Find an item…"
-          aria-label="Find an item"
+          placeholder={editing ? 'Find an item…' : 'Find or add an item…'}
+          aria-label={editing ? 'Find an item' : 'Find or add an item'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-      </div>
+        <button type="button" className="grocery-edit" aria-pressed={editing} onClick={() => setEditing((on) => !on)}>
+          {editing ? 'Done' : 'Edit'}
+        </button>
+      </form>
 
-      <ul className="menu-list grocery-catalog">
-        {shown.map((item) => {
-          const on = item.lines.length > 0;
-          const amount = on ? item.lines.map(formatAmount).join(' + ') : '';
-          return (
-            <li key={item.key} className={`list-row catalog-row${on ? ' is-on' : ''}`}>
-              <button
-                type="button"
-                className="tick catalog-row__btn"
-                role="checkbox"
-                aria-checked={on}
-                onClick={() => toggle(item)}
-              >
-                <span className="tick__box" aria-hidden="true" />
-                <span className="list-row__name">{item.name}</span>
-              </button>
-              <span className="leader" aria-hidden="true" />
-              <span className="list-row__value">{on ? amount : '—'}</span>
-            </li>
-          );
-        })}
-      </ul>
-      {status === 'ready' && shown.length === 0 && (
+      {!editing && view.addName && (
+        <button type="button" className="grocery-add" onClick={addNew}>
+          + Add “{view.addName}”
+        </button>
+      )}
+
+      {view.onList.length > 0 && (
+        <section className="grocery-section">
+          <h2 className="section-label">
+            On the list <span className="section-label__count">{view.onList.length}</span>
+          </h2>
+          <ul className="menu-list">
+            {view.onList.map((line) => (
+              <li key={line.id} className={`list-row${line.checked ? ' is-checked' : ''}`}>
+                <span className="list-row__name">{line.name}</span>
+                <span className="leader" aria-hidden="true" />
+                <AmountControl line={line} onChange={(quantity) => setAmount(line, quantity)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {view.letters.map(({ letter, items }) => (
+        <section key={letter} className="grocery-section">
+          <h2 className="grocery-letter">{letter}</h2>
+          <ul className="menu-list">
+            {items.map((item) =>
+              editing ? (
+                <li key={item.id} className="list-row">
+                  <RenameField item={item} onRename={renameItem} />
+                  <button
+                    type="button"
+                    className="remove-btn"
+                    aria-label={`Remove ${item.name} from Grocery`}
+                    title="Removes it from here; Meals and the list keep it"
+                    onClick={() => forgetItem(item)}
+                  >
+                    ×
+                  </button>
+                </li>
+              ) : (
+                <li key={item.id} className="list-row">
+                  <button type="button" className="grocery-row" onClick={() => addItem(usualAmount(item))}>
+                    <span className="list-row__name">{item.name}</span>
+                    <span className="leader" aria-hidden="true" />
+                    <span className="grocery-row__add">+ add</span>
+                  </button>
+                </li>
+              )
+            )}
+          </ul>
+        </section>
+      ))}
+
+      {listLoaded && !view.onList.length && !view.letters.length && !view.addName && (
         <p className="menu-note">
-          {query ? `Nothing matches “${query}”.` : filter === 'on' ? 'Nothing on your list yet.' : 'All caught up.'}
+          {query ? `Nothing matches “${query}”.` : 'Nothing here yet. Type something above to add it.'}
         </p>
       )}
     </section>

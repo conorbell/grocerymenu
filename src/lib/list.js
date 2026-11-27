@@ -1,9 +1,10 @@
 // The shared Shopping list (see GLOSSARY.md): Planned meals, and the lines
 // to buy. Pure functions only: no React, no Supabase.
 //
-// A list is { plannedMeals, items }. Items are lines, one per name (any case)
-// + unit: { id, name, quantity, unit, checked, ever_ticked }. Lines don't
-// remember which Planned meal added them (ADR-0003).
+// A list is { plannedMeals, items, groceryItems }. Items are lines, one per
+// name (any case) + unit: { id, name, quantity, unit, checked, ever_ticked }.
+// Lines don't remember which Planned meal added them (ADR-0003). groceryItems
+// are the remembered Grocery items (lib/groceryItems.js).
 //
 // Every change returns { next, writes, stats }
 // next:   the list after the change (shown straight away)
@@ -13,15 +14,27 @@
 // stats:  lifetime counters to add for the character sheet ({ meals, added, ticked })
 // A change that would do nothing returns null.
 import { planMeal, toItem, round } from './mealRules';
+import { remember, nameKey, TABLE as GROCERY_ITEMS } from './groceryItems';
 
-export const EMPTY_LIST = { plannedMeals: [], items: [] };
+export const EMPTY_LIST = { plannedMeals: [], items: [], groceryItems: [] };
 
 const ITEMS = 'list_items';
 const PLANNED = 'planned_meals';
+const MEALS = 'meals';
 
 const counts = (stats) => Object.fromEntries(Object.entries(stats).filter(([, n]) => n));
 
-const lineKey = ({ name, unit }) => `${name.trim().toLowerCase()}|${(unit || '').trim()}`;
+const lineKey = ({ name, unit }) => `${nameKey(name)}|${(unit || '').trim()}`;
+
+// Add remembering `entries` as Grocery items to a change.
+const remembering = (list, change, entries) => {
+  const remembered = remember(list.groceryItems || [], entries);
+  return {
+    ...change,
+    next: { ...change.next, groceryItems: remembered.next },
+    writes: [...change.writes, ...remembered.writes],
+  };
+};
 
 // Put new lines on the list: each adds onto the line with the same name and
 // unit (unticking it, as there's more to buy) or becomes a new line.
@@ -48,25 +61,79 @@ export const formatAmount = ({ quantity, unit }) => {
 };
 
 // Put a Meal on the list for `servings`. A Meal is planned at most once:
-// returns { alreadyPlanned } when it's already there.
+// returns { alreadyPlanned } when it's already there. `undo` is what
+// undoPlan needs to take it back.
 export const plan = (list, meal, servings) => {
   const result = planMeal(meal, servings, list.plannedMeals);
   if (result.alreadyPlanned) return result;
   const { plannedMeal, items } = result;
   const added = addLines(list.items, items);
-  return {
-    next: { plannedMeals: [...list.plannedMeals, plannedMeal], items: added.items },
+  const before = new Map(list.items.map((line) => [line.id, line]));
+  const undo = {
+    plannedMealId: plannedMeal.id,
+    created: added.items.filter((line) => !before.has(line.id)).map((line) => line.id),
+    grown: added.items
+      .filter((line) => before.has(line.id) && line !== before.get(line.id))
+      .map(({ id, quantity }) => ({ id, by: round(quantity - before.get(id).quantity), checked: before.get(id).checked })),
+  };
+  const change = {
+    next: { ...list, plannedMeals: [...list.plannedMeals, plannedMeal], items: added.items },
     writes: [{ table: PLANNED, insert: [plannedMeal] }, ...added.writes],
     stats: counts({ meals: 1, added: items.length }),
   };
+  return { ...remembering(list, change, items.map(({ name }) => ({ name }))), undo };
 };
 
-// Something to buy, typed in ("paper towels").
+// Take back a plan: its Planned meal, the lines it made, and what it added to
+// lines already there (as they stand now: a line someone emptied goes).
+export const undoPlan = (list, { plannedMealId, created, grown }) => {
+  const createdIds = new Set(created);
+  const shrink = new Map(grown.map((g) => [g.id, g]));
+  const deletes = [];
+  const updates = [];
+  const items = list.items.flatMap((line) => {
+    if (createdIds.has(line.id)) {
+      deletes.push(line.id);
+      return [];
+    }
+    const g = shrink.get(line.id);
+    if (!g) return [line];
+    const quantity = round(line.quantity - g.by);
+    if (quantity <= 0) {
+      deletes.push(line.id);
+      return [];
+    }
+    updates.push({ table: ITEMS, update: { quantity, checked: g.checked }, ids: [line.id] });
+    return [{ ...line, quantity, checked: g.checked }];
+  });
+  return {
+    next: { ...list, plannedMeals: list.plannedMeals.filter((p) => p.id !== plannedMealId), items },
+    writes: [{ table: PLANNED, delete: [plannedMealId] }, ...(deletes.length ? [{ table: ITEMS, delete: deletes }] : []), ...updates],
+    stats: {},
+  };
+};
+
+// Something to buy, typed in or tapped on the Grocery page ("paper towels").
 export const add = (list, ingredient) => {
   const item = toItem(ingredient);
   if (!item.name) return null;
   const added = addLines(list.items, [item]);
-  return { next: { ...list, items: added.items }, writes: added.writes, stats: { added: 1 } };
+  const change = { next: { ...list, items: added.items }, writes: added.writes, stats: { added: 1 } };
+  return remembering(list, change, [{ name: item.name, quantity: item.quantity, unit: item.unit }]);
+};
+
+// How much of a line to buy; it becomes the item's usual amount. Nothing (or
+// less) takes the line off.
+export const setAmount = (list, line, quantity) => {
+  const amount = round(Number(quantity) || 0);
+  if (amount <= 0) return removeLine(list, line);
+  if (amount === line.quantity) return null;
+  const change = {
+    next: { ...list, items: list.items.map((item) => (item.id === line.id ? { ...item, quantity: amount } : item)) },
+    writes: [{ table: ITEMS, update: { quantity: amount }, ids: [line.id] }],
+    stats: {},
+  };
+  return remembering(list, change, [{ name: line.name, quantity: amount, unit: line.unit }]);
 };
 
 // Only the Planned meal goes; its lines stay on the list (ADR-0003).
@@ -104,11 +171,75 @@ export const clearChecked = (list) => {
   };
 };
 
-export const clearAll = () => ({
-  next: EMPTY_LIST,
-  writes: [
-    { table: ITEMS, deleteAll: true },
-    { table: PLANNED, deleteAll: true },
-  ],
+// Start a new list: the Planned meals and everything ticked go; what's still
+// to buy stays.
+export const newList = (list) => {
+  const ticked = list.items.filter((item) => item.checked).map((item) => item.id);
+  if (!list.plannedMeals.length && !ticked.length) return null;
+  return {
+    next: { ...list, plannedMeals: [], items: list.items.filter((item) => !item.checked) },
+    writes: [
+      ...(list.plannedMeals.length ? [{ table: PLANNED, deleteAll: true }] : []),
+      ...(ticked.length ? [{ table: ITEMS, delete: ticked }] : []),
+    ],
+    stats: {},
+  };
+};
+
+// Rename a Grocery item everywhere it's used: its lines and every Meal's
+// Recipe. A name that already exists merges the two (lines with the same unit
+// add up). `meals` is the Menu; the change's `meals` are the Meals it changed.
+export const renameItem = (list, meals, item, newName) => {
+  const from = nameKey(item.name);
+  const to = nameKey(newName);
+  const target = (list.groceryItems || []).find((g) => g.id !== item.id && nameKey(g.name) === to);
+  const name = target ? target.name : String(newName).trim();
+  if (!to || name === item.name) return null;
+
+  const writes = [];
+  let items = list.items;
+  list.items
+    .filter((line) => nameKey(line.name) === from)
+    .forEach((line) => {
+      const into = items.find((other) => other.id !== line.id && lineKey(other) === lineKey({ name, unit: line.unit }));
+      if (into) {
+        const merged = {
+          quantity: round(into.quantity + line.quantity),
+          checked: into.checked && line.checked,
+          ever_ticked: Boolean(into.ever_ticked || line.ever_ticked),
+        };
+        items = items.filter((other) => other.id !== line.id).map((other) => (other.id === into.id ? { ...other, ...merged } : other));
+        writes.push({ table: ITEMS, update: merged, ids: [into.id] }, { table: ITEMS, delete: [line.id] });
+      } else {
+        items = items.map((other) => (other.id === line.id ? { ...other, name } : other));
+        writes.push({ table: ITEMS, update: { name }, ids: [line.id] });
+      }
+    });
+
+  const changedMeals = meals
+    .filter((meal) => meal.ingredients.some((ing) => nameKey(ing.name) === from))
+    .map((meal) => ({
+      ...meal,
+      ingredients: meal.ingredients.map((ing) => (nameKey(ing.name) === from ? { ...ing, name } : ing)),
+    }));
+  changedMeals.forEach((meal) => writes.push({ table: MEALS, update: { ingredients: meal.ingredients }, ids: [meal.id] }));
+
+  writes.push(target ? { table: GROCERY_ITEMS, delete: [item.id] } : { table: GROCERY_ITEMS, update: { name }, ids: [item.id] });
+  const groceryItems = target
+    ? list.groceryItems.filter((g) => g.id !== item.id)
+    : list.groceryItems.map((g) => (g.id === item.id ? { ...g, name } : g));
+  return { next: { ...list, items, groceryItems }, meals: changedMeals, writes, stats: {} };
+};
+
+// Remember names as Grocery items (e.g. a saved Meal's Recipe).
+export const rememberItems = (list, entries) => {
+  const change = remembering(list, { next: list, writes: [], stats: {} }, entries);
+  return change.writes.length ? change : null;
+};
+
+// Stop showing a Grocery item on the Grocery page. Lines and Meals keep it.
+export const forgetItem = (list, item) => ({
+  next: { ...list, groceryItems: list.groceryItems.filter((g) => g.id !== item.id) },
+  writes: [{ table: GROCERY_ITEMS, delete: [item.id] }],
   stats: {},
 });

@@ -1,6 +1,6 @@
 # 01: Shopping list lines independent of Planned meals
 
-Status: done (migration run and deployed 2026-11-27; planning/merging not yet tried by hand on the live list)
+Status: done (migration run and deployed 2026-11-27)
 Blocked by: none
 Spec: ../spec.md (stories 12-15, 17-20, 24; ADR-0003)
 

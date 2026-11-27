@@ -1,6 +1,6 @@
 # Spec: Grocery items and an independent Shopping list
 
-Status: ready (designed 2026-11-27, not started)
+Status: done (built and deployed 2026-11-27)
 
 Vocabulary follows `GLOSSARY.md` (**Menu**, **Meal**, **Recipe**, **Servings**, **Planned meal**, **Grocery item**, **Shopping list**). Implements ADR-0003 (the Shopping list is independent of Planned meals once filled), which partly supersedes ADR-0001. Respects ADR-0002 (free tiers only).
 

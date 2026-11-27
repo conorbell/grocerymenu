@@ -1,6 +1,6 @@
 # 07: Grocery page Edit mode: remove, rename, merge
 
-Status: ready
+Status: done (2026-11-27)
 Blocked by: 02, 04
 Spec: ../spec.md (stories 26-28)
 

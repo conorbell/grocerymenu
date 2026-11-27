@@ -33,11 +33,21 @@ describe('plan', () => {
       ['lime', 4, ''],
     ]);
     expect(change.next.items[0]).not.toHaveProperty('planned_meal_id');
-    expect(change.writes).toEqual([
+    expect(change.writes.slice(0, 2)).toEqual([
       { table: 'planned_meals', insert: [planned] },
       { table: 'list_items', insert: change.next.items },
     ]);
     expect(change.stats).toEqual({ meals: 1, added: 2 });
+  });
+
+  test('remembers the ingredients as Grocery items, without changing usual amounts', () => {
+    const start = { ...list.EMPTY_LIST, groceryItems: [{ id: 'g1', name: 'Lime', last_quantity: 3, last_unit: '' }] };
+    const change = list.plan(start, fishTacos, 2);
+    expect(change.next.groceryItems.map((g) => [g.name, g.last_quantity])).toEqual([
+      ['Lime', 3],
+      ['tilapia', null],
+    ]);
+    expect(change.writes[2]).toEqual({ table: 'grocery_items', insert: [change.next.groceryItems[1]] });
   });
 
   test('adds onto a line with the same name (any case) and unit; other units stay apart', () => {
@@ -48,7 +58,7 @@ describe('plan', () => {
       ['b', 'tilapia', 1, 'fillet'],
       ['new', 'tilapia', 1, 'lb'],
     ]);
-    expect(change.writes.slice(1)).toEqual([
+    expect(change.writes.slice(1, 3)).toEqual([
       { table: 'list_items', insert: [change.next.items[2]] },
       { table: 'list_items', update: { quantity: 3, checked: false }, ids: ['a'] },
     ]);
@@ -69,6 +79,29 @@ describe('plan', () => {
     expect(change.writes[1]).toEqual({ table: 'list_items', insert: change.next.items });
   });
 
+  test('undo takes back the Planned meal and exactly what it added', () => {
+    const start = listOf(line({ id: 'a', quantity: 1, checked: true }), line({ id: 'b', name: 'foil' }));
+    const planned = list.plan(start, fishTacos, 2);
+    const undone = list.undoPlan(planned.next, planned.undo);
+    expect(undone.next.plannedMeals).toEqual([]);
+    expect(undone.next.items).toEqual(start.items);
+    expect(undone.writes).toEqual([
+      { table: 'planned_meals', delete: [planned.next.plannedMeals[0].id] },
+      { table: 'list_items', delete: [planned.next.items[2].id] },
+      { table: 'list_items', update: { quantity: 1, checked: true }, ids: ['a'] },
+    ]);
+  });
+
+  test('undo copes with lines changed or removed in the meantime', () => {
+    const planned = list.plan(listOf(line({ id: 'a', quantity: 1 })), fishTacos, 2);
+    const [, tilapia] = planned.next.items;
+    let meanwhile = list.removeLine(planned.next, tilapia).next;
+    meanwhile = list.setAmount(meanwhile, meanwhile.items[0], 2).next; // limes 3 → 2
+    const undone = list.undoPlan(meanwhile, planned.undo);
+    expect(undone.next.items).toEqual([]); // 2 limes minus the 2 the meal added
+    expect(undone.writes.slice(1)).toEqual([{ table: 'list_items', delete: ['a'] }]);
+  });
+
   test('a Meal already on the list is not planned again', () => {
     const once = list.plan(list.EMPTY_LIST, fishTacos, 2).next;
     expect(list.plan(once, fishTacos, 2)).toEqual({ alreadyPlanned: once.plannedMeals[0] });
@@ -79,22 +112,38 @@ describe('adding and removing', () => {
   test('add puts a new line on the list; a blank one is ignored', () => {
     const change = list.add(list.EMPTY_LIST, { name: ' paper towels ', quantity: 2, unit: 'pack' });
     expect(change.next.items).toEqual([expect.objectContaining({ name: 'paper towels', quantity: 2, unit: 'pack' })]);
-    expect(change.writes).toEqual([{ table: 'list_items', insert: change.next.items }]);
+    expect(change.writes[0]).toEqual({ table: 'list_items', insert: change.next.items });
     expect(change.stats).toEqual({ added: 1 });
     expect(list.add(list.EMPTY_LIST, { name: '  ' })).toBeNull();
+  });
+
+  test('add remembers the item with the amount used', () => {
+    const change = list.add(list.EMPTY_LIST, { name: 'foil', quantity: 2, unit: 'pack' });
+    expect(change.next.groceryItems).toEqual([expect.objectContaining({ name: 'foil', last_quantity: 2, last_unit: 'pack' })]);
+    expect(change.writes[1]).toEqual({ table: 'grocery_items', insert: change.next.groceryItems });
   });
 
   test('add onto an existing line grows it', () => {
     const change = list.add(listOf(line({ id: 'a', quantity: 2 })), { name: 'LIME', quantity: 1 });
     expect(change.next.items).toEqual([line({ id: 'a', quantity: 3 })]);
-    expect(change.writes).toEqual([{ table: 'list_items', update: { quantity: 3, checked: false }, ids: ['a'] }]);
+    expect(change.writes[0]).toEqual({ table: 'list_items', update: { quantity: 3, checked: false }, ids: ['a'] });
+  });
+
+  test('setAmount changes a line and its usual amount; nothing or less removes it', () => {
+    const start = listOf(line({ id: 'a', quantity: 2 }));
+    const change = list.setAmount(start, start.items[0], 5);
+    expect(change.next.items).toEqual([line({ id: 'a', quantity: 5 })]);
+    expect(change.writes[0]).toEqual({ table: 'list_items', update: { quantity: 5 }, ids: ['a'] });
+    expect(change.next.groceryItems).toEqual([expect.objectContaining({ name: 'lime', last_quantity: 5 })]);
+    expect(list.setAmount(start, start.items[0], 0).writes).toEqual([{ table: 'list_items', delete: ['a'] }]);
+    expect(list.setAmount(start, start.items[0], 2)).toBeNull();
   });
 
   test('removing a Planned meal leaves the list alone', () => {
     const start = list.plan(list.EMPTY_LIST, fishTacos, 2).next;
     const planned = start.plannedMeals[0];
     const change = list.removePlanned(start, planned);
-    expect(change.next).toEqual({ plannedMeals: [], items: start.items });
+    expect(change.next).toEqual({ ...start, plannedMeals: [] });
     expect(change.writes).toEqual([{ table: 'planned_meals', delete: [planned.id] }]);
   });
 
@@ -131,12 +180,66 @@ describe('ticking', () => {
     expect(list.clearChecked(listOf(line({ id: 'b' })))).toBeNull();
   });
 
-  test('clearing the whole list empties both tables', () => {
-    const change = list.clearAll(list.plan(list.EMPTY_LIST, fishTacos, 2).next);
-    expect(change.next).toEqual(list.EMPTY_LIST);
+  test('a new list drops the Planned meals and ticked lines, keeping what is still to buy', () => {
+    const start = { ...list.plan(list.EMPTY_LIST, fishTacos, 2).next };
+    const ticked = list.toggle(start, start.items[0]).next;
+    const change = list.newList(ticked);
+    expect(change.next.plannedMeals).toEqual([]);
+    expect(change.next.items.map((i) => i.name)).toEqual(['lime']);
     expect(change.writes).toEqual([
-      { table: 'list_items', deleteAll: true },
       { table: 'planned_meals', deleteAll: true },
+      { table: 'list_items', delete: [ticked.items[0].id] },
     ]);
+    expect(list.newList(listOf(line({ id: 'b' })))).toBeNull();
+  });
+});
+
+describe('Grocery items on the Grocery page', () => {
+  const egg = { id: 'g1', name: 'Egg', last_quantity: 6, last_unit: '' };
+  const eggs = { id: 'g2', name: 'Eggs', last_quantity: 12, last_unit: '' };
+  const shakshuka = { id: 'm2', title: 'Shakshuka', ingredients: [{ name: 'egg', quantity: 6, unit: '' }, { name: 'tomato', quantity: 2, unit: '' }] };
+
+  test('renaming changes the item, the Meals that use it and its lines', () => {
+    const start = { plannedMeals: [], items: [line({ id: 'a', name: 'Egg', quantity: 6 })], groceryItems: [egg] };
+    const change = list.renameItem(start, [shakshuka, fishTacos], egg, 'Hen eggs');
+    expect(change.next.groceryItems).toEqual([{ ...egg, name: 'Hen eggs' }]);
+    expect(change.next.items).toEqual([line({ id: 'a', name: 'Hen eggs', quantity: 6 })]);
+    expect(change.meals).toEqual([{ ...shakshuka, ingredients: [{ name: 'Hen eggs', quantity: 6, unit: '' }, shakshuka.ingredients[1]] }]);
+    expect(change.writes).toEqual([
+      { table: 'list_items', update: { name: 'Hen eggs' }, ids: ['a'] },
+      { table: 'meals', update: { ingredients: change.meals[0].ingredients }, ids: ['m2'] },
+      { table: 'grocery_items', update: { name: 'Hen eggs' }, ids: ['g1'] },
+    ]);
+  });
+
+  test('renaming to a name that exists merges the two, and their lines', () => {
+    const start = {
+      plannedMeals: [],
+      items: [line({ id: 'a', name: 'Egg', quantity: 6, checked: true }), line({ id: 'b', name: 'Eggs', quantity: 2 })],
+      groceryItems: [egg, eggs],
+    };
+    const change = list.renameItem(start, [shakshuka], egg, 'eggs');
+    expect(change.next.groceryItems).toEqual([eggs]);
+    expect(change.next.items).toEqual([line({ id: 'b', name: 'Eggs', quantity: 8 })]);
+    expect(change.meals[0].ingredients[0].name).toBe('Eggs');
+    expect(change.writes).toEqual([
+      { table: 'list_items', update: { quantity: 8, checked: false, ever_ticked: false }, ids: ['b'] },
+      { table: 'list_items', delete: ['a'] },
+      { table: 'meals', update: { ingredients: change.meals[0].ingredients }, ids: ['m2'] },
+      { table: 'grocery_items', delete: ['g1'] },
+    ]);
+  });
+
+  test('a blank or unchanged name does nothing', () => {
+    const start = { plannedMeals: [], items: [], groceryItems: [egg] };
+    expect(list.renameItem(start, [], egg, '  ')).toBeNull();
+    expect(list.renameItem(start, [], egg, 'Egg')).toBeNull();
+  });
+
+  test('forgetting an item leaves the list and Meals alone', () => {
+    const start = { plannedMeals: [], items: [line({ name: 'Egg' })], groceryItems: [egg, eggs] };
+    const change = list.forgetItem(start, egg);
+    expect(change.next).toEqual({ ...start, groceryItems: [eggs] });
+    expect(change.writes).toEqual([{ table: 'grocery_items', delete: ['g1'] }]);
   });
 });

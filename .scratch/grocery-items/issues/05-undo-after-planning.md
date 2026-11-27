@@ -1,6 +1,6 @@
 # 05: Undo after planning a Meal
 
-Status: ready
+Status: done (2026-11-27)
 Blocked by: 01
 Spec: ../spec.md (story 16)
 

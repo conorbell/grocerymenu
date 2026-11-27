@@ -67,11 +67,14 @@ src/
   layouts/UserLayout.jsx     outlet wrapper for /user routes
   lib/
     supabase.js              client (null when not configured)
-    mealRules.js             pure Menu/Planned meal rules (validate, plan, rescale,
-                               edit, sort) + the category list; tested
-    list.js                  pure shopping-list changes: each returns
-                               { next, writes, stats } (writes = plain data);
-                               line grouping + amounts; tested
+    mealRules.js             pure Menu/Planned meal rules (validate, plan,
+                               sort) + the category list; tested
+    list.js                  pure Shopping list changes: each returns
+                               { next, writes, stats } (writes = plain data):
+                               plan/undo, add, amounts, tick, new list,
+                               rename/merge Grocery items; tested
+    groceryItems.js          pure: remembering Grocery items, the /grocery
+                               view (on the list, A–Z, "+ Add"); tested
     rpgStats.js              LV/EXP/HP/MP/class/stats + stat points (tweak here)
     ingredients.js           ingredient labels (Meals store {name,quantity,unit})
     shareList.js             "Share list" text + share sheet / copy fallback
@@ -88,7 +91,9 @@ src/
                                        Planned meal ticket
     ChatPanel.jsx, PhotoCropper.jsx, SignInPrompt.jsx, Avatar.jsx, HeartIcon.jsx
     main.js                           Home (cat photo slideshow)
-    pages/Grocery.jsx                 /grocery – every known item, tick to add/remove
+    pages/Grocery.jsx                 /grocery – build the list: search that adds,
+                                       "On the list" with amounts, every other
+                                       Grocery item A–Z; Edit renames/merges/removes
     pages/menus/MealMenu.jsx          /breakfast /lunch /dinner (add, servings
                                        stepper, edit, recipe link, favourite);
                                        Breakfast/Lunch/Dinner.jsx are one-line
@@ -115,6 +120,10 @@ docs/agents/                 skills config (issue tracker = .scratch/ markdown)
 lines, one per name (any case) + unit. Planning a Meal adds onto matching lines;
 after that lines are independent of Planned meals, so removing one leaves its
 items (ADR-0003). `ever_ticked` makes "items ticked" count a line once.
+`grocery_items` `{id, name, last_quantity, last_unit}` = every Grocery item the
+household has added (names unique ignoring case); a tap on /grocery adds the
+last amount used. Planning shows an Undo for 5 s; "New list" drops Planned
+meals and ticked lines and keeps the rest.
 Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 
 ---
@@ -131,6 +140,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 | `chat.sql` | `messages`, `chat_reads`, realtime |
 | `meals.sql` | `meals` + seed of the 11 originals, `planned_meals.meal_id/servings`, favourites → ids, `meals_created` stat, `meal-photos` bucket |
 | `list_items.sql` | renames `grocery_items` → `list_items`, drops `planned_meal_id`, adds `ever_ticked`, merges duplicate lines |
+| `grocery_items.sql` | new `grocery_items` (remembered Grocery items + last amount used), backfilled from the list and Meal ingredients |
 
 - Two accounts exist. **Sign-ups are disabled**; add users in
   the dashboard (Authentication → Users → Add user, "Auto Confirm").

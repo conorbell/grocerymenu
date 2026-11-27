@@ -1,6 +1,6 @@
 # 08: Suggest Grocery item names
 
-Status: ready
+Status: done (2026-11-27)
 Blocked by: 02
 Spec: ../spec.md (story 29)
 

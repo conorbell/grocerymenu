@@ -9,7 +9,7 @@ import React, {
 } from 'react';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/image';
-import { validateMeal, menuByCategory, newId } from '../../lib/mealRules';
+import { CATEGORIES, validateMeal, menuByCategory, newId } from '../../lib/mealRules';
 import * as list from '../../lib/list';
 
 /*
@@ -28,6 +28,7 @@ import * as list from '../../lib/list';
  */
 
 const MEAL_PHOTOS = 'meal-photos';
+export const UNDO_MS = 5000;
 
 const ListContext = createContext();
 
@@ -47,18 +48,25 @@ const runWrites = async (writes) => {
 };
 
 const fetchShared = async () => {
-  const [plannedMeals, items] = await Promise.all([
+  const [plannedMeals, items, groceryItems] = await Promise.all([
     supabase.from('planned_meals').select('id, title, meal_id, servings').order('created_at'),
     supabase
       .from('list_items')
       .select('id, name, quantity, unit, checked, ever_ticked, added_by')
       .order('created_at'),
+    supabase.from('grocery_items').select('id, name, last_quantity, last_unit'),
   ]);
   if (plannedMeals.error) throw plannedMeals.error;
   if (items.error) throw items.error;
+  // Missing until supabase/grocery_items.sql is run: the list still works.
+  if (groceryItems.error) console.error(groceryItems.error);
   return {
     plannedMeals: plannedMeals.data,
     items: items.data.map((item) => ({ ...item, quantity: Number(item.quantity) })),
+    groceryItems: (groceryItems.data || []).map((item) => ({
+      ...item,
+      last_quantity: item.last_quantity === null ? null : Number(item.last_quantity),
+    })),
   };
 };
 
@@ -198,6 +206,7 @@ const ListProvider = ({ children }) => {
       .channel('household-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'planned_meals' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'list_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'grocery_items' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'meals' }, () => refreshMenu())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => refreshProfiles())
       .subscribe();
@@ -317,6 +326,7 @@ const ListProvider = ({ children }) => {
     }
     if (existing && existing.photo_url !== row.photo_url) removeStoredPhoto(existing.photo_url);
     setMenu((prev) => [...prev.filter((meal) => meal.id !== id), row]);
+    commit(list.rememberItems(dataRef.current, row.ingredients.map(({ name }) => ({ name }))));
     if (!existing) bumpStats({ created: 1 });
     return { ok: true, meal: row };
   };
@@ -337,13 +347,34 @@ const ListProvider = ({ children }) => {
   const commit = (change) => {
     if (!change || change.alreadyPlanned) return change;
     setList(change.next);
+    if (change.meals?.length) {
+      const changed = new Map(change.meals.map((meal) => [meal.id, meal]));
+      setMenu((prev) => prev.map((meal) => changed.get(meal.id) || meal));
+    }
     remote(() => runWrites(change.writes));
     bumpStats(change.stats);
     return change;
   };
   const change = (op) => (...args) => commit(op(dataRef.current, ...args));
 
-  const planMeal = (meal, servings = meal.servings) => commit(list.plan(dataRef.current, meal, servings));
+  // Planning shows an Undo for a few seconds (see RootLayout's caption).
+  const [pendingUndo, setPendingUndo] = useState(null); // { title, undo } | null
+  const undoTimer = useRef(null);
+  const planMeal = (meal, servings = meal.servings) => {
+    const result = commit(list.plan(dataRef.current, meal, servings));
+    if (result?.undo) {
+      clearTimeout(undoTimer.current);
+      setPendingUndo({ title: meal.title, undo: result.undo });
+      undoTimer.current = setTimeout(() => setPendingUndo(null), UNDO_MS);
+    }
+    return result;
+  };
+  const undoPlan = () => {
+    if (!pendingUndo) return;
+    clearTimeout(undoTimer.current);
+    commit(list.undoPlan(dataRef.current, pendingUndo.undo));
+    setPendingUndo(null);
+  };
 
   const signIn = async (email, password) => {
     if (!supabase) return { ok: false, message: 'Shared lists are not set up yet' };
@@ -439,11 +470,17 @@ const ListProvider = ({ children }) => {
   };
 
   const menuSorted = useMemo(() => menuByCategory(menu), [menu]);
+  // Meals with a photo, in Menu order: what the photo reel shows.
+  const mealPhotos = useMemo(
+    () => CATEGORIES.flatMap((key) => menuSorted[key]).filter((meal) => meal.photo_url),
+    [menuSorted]
+  );
 
   const value = {
     // the Menu
     menu,
     menuByCategory: menuSorted,
+    mealPhotos,
     menuStatus,
     mealById: (id) => menu.find((meal) => meal.id === id) || null,
     saveMeal,
@@ -456,11 +493,18 @@ const ListProvider = ({ children }) => {
     groceryList: data.items,
     planMeal,
     addItem: change(list.add),
+    setAmount: change(list.setAmount),
+    pendingUndo,
+    undoPlan,
     removePlannedMeal: change(list.removePlanned),
     removeGrocery: change(list.removeLine),
     toggleChecked: change(list.toggle),
     clearChecked: change(list.clearChecked),
-    clearLists: change(list.clearAll),
+    newList: change(list.newList),
+    // Grocery items
+    groceryItems: data.groceryItems,
+    renameItem: (item, name) => commit(list.renameItem(dataRef.current, menu, item, name)),
+    forgetItem: change(list.forgetItem),
     // sharing / auth
     sharingAvailable: Boolean(supabase),
     shared,

@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSound } from 'use-sound';
 import Al from '../../public/hoo-ah-a.mp3';
 import fiya from '../../public/dickfire.mp3';
-import { useList } from '../components/functions/ListContextWrapper';
+import { useList, UNDO_MS } from '../components/functions/ListContextWrapper';
 import { CreateMeal } from '../components/CreateMeal';
 import { CATEGORIES as CATEGORY_KEYS } from '../lib/mealRules';
 import { ChatPanel } from '../components/ChatPanel';
+import { PhotoReel } from '../components/PhotoReel';
 import { useChat } from '../components/functions/ChatContext';
 
 // Each page gets its own flat background + headline colour (see styles.css).
@@ -158,12 +159,25 @@ export const RootLayout = () => {
     profilesLoaded,
     authReady,
     listLoaded,
+    mealPhotos,
+    groceryItems,
+    pendingUndo,
+    undoPlan,
   } = useList();
   const [showCreate, setShowCreate] = useState(false);
   const closeCreate = useCallback(() => setShowCreate(false), []);
   const { pathname } = useLocation();
-  const caption = useAddedCaption(mealList, listLoaded);
+  const added = useAddedCaption(mealList, listLoaded);
+  // Your own add comes with an Undo (and stays up while it can be undone).
+  const caption = pendingUndo ? { title: pendingUndo.title, undo: true } : added;
   const [menuOpen, setMenuOpen] = useMenu(pathname);
+  const [reelFrom, setReelFrom] = useState(null); // Meal id the photo reel starts at
+  const closeReel = useCallback(() => setReelFrom(null), []);
+  // Phones show meal photos only here: a new one each time the menu opens.
+  const menuPhoto = useMemo(
+    () => (menuOpen && mealPhotos.length ? mealPhotos[Math.floor(Math.random() * mealPhotos.length)] : null),
+    [menuOpen]
+  );
 
   const listLabel = `List${groceryList.length ? ` (${groceryList.length})` : ''}`;
   const profileLink = {
@@ -219,8 +233,24 @@ export const RootLayout = () => {
           <NavItem to="/grocery" label="Grocery" sub="every item" className="phone-menu__link" />
           <NavItem to="/checkout" label={listLabel} sub="to buy" className="phone-menu__link" />
           <NavItem {...profileLink} className="phone-menu__link" />
+          {menuPhoto && (
+            <button
+              type="button"
+              className="phone-menu__photos"
+              aria-label="See every meal photo"
+              onClick={() => {
+                setMenuOpen(false);
+                setReelFrom(menuPhoto.id);
+              }}
+            >
+              <img src={menuPhoto.photo_url} alt="" />
+              <span>Photos</span>
+            </button>
+          )}
         </nav>
       )}
+
+      {reelFrom && <PhotoReel meals={mealPhotos} startId={reelFrom} onClose={closeReel} />}
 
       {syncError && (
         <p className="sync-error" role="alert">
@@ -264,9 +294,26 @@ export const RootLayout = () => {
 
       <div className="caption" aria-live="polite">
         {caption && (
-          <p key={`${caption.title}${mealList.length}`}>[adds {caption.title} to the list]</p>
+          <p key={`${caption.title}${mealList.length}`} style={caption.undo ? { animationDuration: `${UNDO_MS}ms` } : undefined}>
+            [adds {caption.title} to the list]
+            {caption.undo && (
+              <>
+                {' '}
+                <button type="button" className="caption__undo" onClick={undoPlan}>
+                  Undo
+                </button>
+              </>
+            )}
+          </p>
         )}
       </div>
+
+      {/* Suggestions for every item-name field (add boxes, Recipe ingredients). */}
+      <datalist id="grocery-item-names">
+        {groceryItems.map((item) => (
+          <option key={item.id} value={item.name} />
+        ))}
+      </datalist>
     </div>
   );
 };

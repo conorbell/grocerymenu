@@ -102,6 +102,7 @@ const IngredientRows = ({ rows, setRows }) => {
             type="text"
             placeholder={index === 0 ? 'e.g. cheddar' : ''}
             aria-label={`Ingredient ${index + 1}`}
+            list="grocery-item-names"
             ref={(el) => (inputs.current[row.key] = el)}
             value={row.name}
             onChange={(e) => update(row.key, 'name', e.target.value)}

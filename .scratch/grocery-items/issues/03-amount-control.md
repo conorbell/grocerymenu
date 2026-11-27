@@ -1,6 +1,6 @@
 # 03: Amount control
 
-Status: ready
+Status: done (2026-11-27)
 Blocked by: 01
 Spec: ../spec.md (stories 8-11)
 

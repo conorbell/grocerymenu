@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useList } from '../../functions/ListContextWrapper';
-import { formatAmount } from '../../../lib/list';
+import { AmountControl } from '../../AmountControl';
 import { UNITS } from '../../../lib/units';
 import { buildShareText, shareList } from '../../../lib/shareList';
 import { SignInPrompt } from '../../SignInPrompt';
@@ -54,6 +54,7 @@ const AddItemForm = () => {
         type="text"
         placeholder="Add an item…"
         aria-label="Item"
+        list="grocery-item-names"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -73,7 +74,8 @@ const Checkout = () => {
     removePlannedMeal,
     toggleChecked,
     clearChecked,
-    clearLists,
+    newList,
+    setAmount,
     authReady,
     user,
   } = useList();
@@ -91,7 +93,6 @@ const Checkout = () => {
       setTimeout(() => setShareStatus(null), 2500);
     }
   };
-  const isEmpty = plannedMeals.length === 0 && groceryList.length === 0;
 
   if (authReady && !user) return <SignInPrompt heading="LIST" />;
 
@@ -131,7 +132,7 @@ const Checkout = () => {
                   <span className="list-row__name">{item.name}</span>
                 </button>
                 <span className="leader" aria-hidden="true" />
-                <span className="list-row__value">{formatAmount(item)}</span>
+                <AmountControl line={item} onChange={(quantity) => setAmount(item, quantity)} />
                 <button
                   className="remove-btn"
                   aria-label={`Remove ${item.name}`}
@@ -187,15 +188,17 @@ const Checkout = () => {
         </div>
       </div>
 
-      {!isEmpty && (
+      {(plannedMeals.length > 0 || tickedCount > 0) && (
         <div className="center">
           <button
             className="text-btn"
             onClick={() => {
-              if (window.confirm('Clear all meals and groceries?')) clearLists();
+              const keep = groceryList.length - tickedCount;
+              const keeping = keep ? `${keep} unticked ${keep === 1 ? 'item stays' : 'items stay'}` : 'nothing is left to buy';
+              if (window.confirm(`Start a new list? The meals and ticked items go; ${keeping}.`)) newList();
             }}
           >
-            Start over
+            New list
           </button>
         </div>
       )}

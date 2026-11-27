@@ -1,6 +1,6 @@
 # 04: Grocery page: search-first layout
 
-Status: ready
+Status: done (2026-11-27)
 Blocked by: 02, 03
 Spec: ../spec.md (stories 1-7)
 
