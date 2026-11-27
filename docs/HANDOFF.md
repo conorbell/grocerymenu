@@ -2,8 +2,7 @@
 
 _Last updated: 2026-11-27. Read this first when picking the project back up._
 
-A shared meal-planner + grocery list for a two-person household (Conor and his
-fiancée Melissa). Pick meals from a menu, their ingredients land on a shared
+A shared meal-planner + grocery list for a two-person household. Pick meals from a menu, their ingredients land on a shared
 shopping list that both phones see live. Also has RPG-style profiles, a party
 HUD, and a household chat.
 
@@ -38,7 +37,6 @@ npm test           # Jest: the Menu / Planned meal rules (src/lib/mealRules.js)
 
 - Needs `.env` (gitignored) with `SUPABASE_URL` and `SUPABASE_ANON_KEY`
   (publishable key, safe in the browser; RLS protects data). See `.env.example`.
-  `MONGO_URI` is legacy and unused.
 - `webpack.config.js` bakes the Supabase env vars in via `DefinePlugin`, so
   **restart `npm run dev` after editing `.env`**.
 - **You must be logged in.** Logged out, the Menu, list and grocery pages show a
@@ -61,7 +59,10 @@ from production builds.
 ```
 src/
   Routes.jsx                 routes; App = ListProvider > ChatProvider > Router
-  layouts/RootLayout.jsx     header nav, per-page theme, corner pills, chat
+  CustomErrorBoundary.jsx    route error element
+  layouts/RootLayout.jsx     header nav, per-page theme, corner pills, chat,
+                               nav hover sounds (public/*.mp3 via use-sound)
+  layouts/UserLayout.jsx     outlet wrapper for /user routes
   lib/
     supabase.js              client (null when not configured)
     mealRules.js             pure Menu/Planned meal rules (validate, plan, rescale,
@@ -83,14 +84,17 @@ src/
     pages/Grocery.jsx                 /grocery – every known item, tick to add/remove
     pages/FullMenu.jsx                /menu – whole menu, read-only
     pages/menus/MealMenu.jsx          /breakfast /lunch /dinner (add, servings
-                                       stepper, edit, recipe link, favourite)
+                                       stepper, edit, recipe link, favourite);
+                                       Breakfast/Lunch/Dinner.jsx are one-line
+                                       wrappers passing the category
     pages/menus/Checkout.jsx          /checkout – shared list, add extra items,
                                        tick off, Share list
     pages/user/Account.jsx            /user – character sheet, party HUD,
                                        edit profile (+ photo crop), allocate
                                        stats, settings, change password
     pages/user/Login.jsx              /user/login (Supabase email+password)
-  styles.css                 ALL styles (~2.8k lines, see "Known issues")
+    pages/user/ProfilePreview.jsx     /user/preview, dev-only sample data
+  styles.css                 ALL styles (~3k lines, see "Known issues")
 supabase/*.sql               database setup (see below)
 public/food/                 photos of the original 11 Meals (~100 KB each)
 public/cats/                 home-page slideshow photos (resized)
@@ -119,7 +123,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 | `chat.sql` | `messages`, `chat_reads`, realtime |
 | `meals.sql` | `meals` + seed of the 11 originals, `planned_meals.meal_id/servings`, favourites → ids, `meals_created` stat, `meal-photos` bucket |
 
-- Two accounts exist (Conor and Melissa). **Sign-ups are disabled**; add users in
+- Two accounts exist. **Sign-ups are disabled**; add users in
   the dashboard (Authentication → Users → Add user, "Auto Confirm").
 - Project created with "auto-grant API access" **off**, so every new table needs
   explicit `grant … to authenticated` + RLS policies (see existing files).
@@ -164,15 +168,15 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 2. **Clean up `styles.css`**: many sections are defined twice (later override
    wins: `.profile`, `.site-header`, `.party__frames`, nav labels…). Merge,
    delete dead styles (old chat/ticket variants). Keep the no-radius rule last.
-3. **Remove dead code/deps**: empty `new.css`, commented `userContext.js`;
-   unused packages (nodemon, concurrently, mongoose, mongodb, db-conn,
-   react-player, react-audio-player, react-style-tag, node-fetch, url-loader,
-   assets-webpack-plugin, webpack-hot-middleware, path). `npm audit` reports 7
-   vulns (1 critical) in prod deps.
-4. Small bugs: untick/re-tick double-counts `items_ticked`; chat unread badge
-   only counts the loaded (last 3) days; shared-list realtime channel briefly
-   subscribes twice after login; old saved lists may still contain
-   "2 small potatoes" / "given up, have we?" items.
+3. **Dev tooling audit**: dead code and unused packages were removed
+   2026-11-27; `npm audit --omit=dev` is clean. The dev/build tooling
+   (webpack, webpack-dev-server and their deps) still reports vulns;
+   `npm audit fix` should clear most, then check `npm run dev` / `build`.
+   Unused assets still in `public/`: `oldStuff/`, `sniglet webfonts/`,
+   `lilguy.jpg`, `myheadshot.png` (nothing references them; keep or delete).
+4. Small bugs: untick/re-tick double-counts `items_ticked`; shared-list
+   realtime channel briefly subscribes twice after login; old saved lists may
+   still contain "2 small potatoes" / "given up, have we?" items.
 5. Features discussed: group shopping list by aisle; maybe drop `/menu` (it
    duplicates the category pages).
 

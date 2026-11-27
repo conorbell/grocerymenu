@@ -1,12 +1,12 @@
 # Spec: Save custom meals to the Menu
 
-Status: ready-for-agent
+Status: done (deployed 2026-11-27)
 
 Vocabulary follows `GLOSSARY.md` (**Menu**, **Meal**, **Recipe**, **Servings**, **Category**, **Planned meal**, **Extra item**). Respects ADR-0001 (a Planned meal is a copy of its Meal) and ADR-0002 (free tiers only).
 
 ## Problem Statement
 
-The Menu is a fixed list of 11 Meals that only a code change can alter. When Conor or Melissa want a new dish, the Create meal form puts it on this week's shopping list as a one-off, and then it's gone: it never appears on the breakfast, lunch or dinner pages, it can't be picked again next week, it has no photo, and the servings number typed in is forgotten. Neither of them can fix a typo in an existing Meal, change its photo, or remove a Meal they've stopped cooking.
+The Menu is a fixed list of 11 Meals that only a code change can alter. When either party member wants a new dish, the Create meal form puts it on this week's shopping list as a one-off, and then it's gone: it never appears on the breakfast, lunch or dinner pages, it can't be picked again next week, it has no photo, and the servings number typed in is forgotten. Neither of them can fix a typo in an existing Meal, change its photo, or remove a Meal they've stopped cooking.
 
 ## Solution
 

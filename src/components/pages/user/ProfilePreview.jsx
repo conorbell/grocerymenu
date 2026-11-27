@@ -21,7 +21,7 @@ const me = {
 
 const mate = {
   id: 'mate',
-  display_name: 'Melissa',
+  display_name: 'Sam',
   bio: 'Head chef, sous chef and dishwasher (allegedly).',
   avatar_url: cat1,
   cook_willingness: 8,

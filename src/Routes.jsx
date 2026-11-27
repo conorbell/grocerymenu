@@ -27,7 +27,6 @@ import { ErrorBoundary } from "./CustomErrorBoundary"
 //Providers
 import { ListProvider } from "./components/functions/ListContextWrapper"
 import { ChatProvider } from "./components/functions/ChatContext"
-// import { UserProvider } from "./components/functions/userContext"
 //layouts
 import { RootLayout } from "./layouts/RootLayout"
 import { UserLayout } from "./layouts/UserLayout"
