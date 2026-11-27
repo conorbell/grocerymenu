@@ -31,12 +31,10 @@ html {
 }
 
 body {
-  overscroll-behavior: none;
-}
-
-body {
   margin: 0;
   min-height: 100vh;
+  background: var(--page-bg, var(--red));
+  overscroll-behavior: none;
   color: var(--ink);
   font-family: var(--sans);
   font-size: 16px;
@@ -79,10 +77,6 @@ body {
   --headline: var(--blue);
 }
 
-body {
-  background: var(--page-bg, var(--red));
-}
-
 a {
   color: inherit;
 }
@@ -101,7 +95,9 @@ button {
   color: var(--ink);
 }
 
-/* ---------- Header ---------- */
+/* ---------- Header ----------
+   Content scrolls under the nav and fades out: mostly solid page colour
+   behind the links, then a soft fade below them, instead of a hard-edged bar. */
 .site-header {
   position: sticky;
   top: 0;
@@ -111,8 +107,28 @@ button {
   align-items: start;
   gap: 16px;
   padding: 12px var(--gutter);
-  background: var(--page-bg, var(--red));
+  background: linear-gradient(
+    to bottom,
+    var(--page-bg, var(--red)) 0%,
+    var(--page-bg, var(--red)) 55%,
+    color-mix(in srgb, var(--page-bg, var(--red)) 82%, transparent) 100%
+  );
   transition: background-color 0.4s ease;
+}
+
+.site-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 20px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--page-bg, var(--red)) 82%, transparent),
+    color-mix(in srgb, var(--page-bg, var(--red)) 0%, transparent)
+  );
 }
 
 .nav {
@@ -159,8 +175,9 @@ button {
 }
 
 /* ---------- Page scaffolding ---------- */
+/* top padding: nothing sits in the header fade until you scroll */
 main {
-  padding: 0 var(--gutter) 140px;
+  padding: 24px var(--gutter) 140px;
 }
 
 .page {
@@ -523,9 +540,6 @@ main {
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-}
-
-.sound-toggle {
   --halo: var(--page-bg, var(--red));
 }
 
@@ -1043,28 +1057,6 @@ main {
   gap: 10px;
 }
 
-/* ---------- Account page ---------- */
-.account__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 40px 64px;
-  margin: 24px 0 48px;
-}
-
-.account__grid .list-row__value {
-  font-size: 16px;
-  text-align: right;
-  overflow-wrap: anywhere;
-}
-
-.account__password {
-  margin-bottom: 40px;
-}
-
-.account__logout {
-  margin-bottom: 24px;
-}
-
 /* Browsers paint autofilled fields light blue/yellow. Keep them transparent
    (the long transition stops the autofill colour from ever showing) and keep
    our text colour. */
@@ -1080,10 +1072,6 @@ input:autofill {
 
 /* ---------- Profile ---------- */
 .profile {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 24px 48px;
-  align-items: start;
   margin: 24px 0 48px;
 }
 
@@ -1101,10 +1089,6 @@ input:autofill {
 .profile--mate {
   padding-top: 32px;
   border-top: 2px solid var(--ink);
-}
-
-.profile-divider {
-  margin-top: 16px;
 }
 
 .profile__name {
@@ -1133,11 +1117,6 @@ input:autofill {
 .profile__bio.is-empty {
   font-style: italic;
   opacity: 0.6;
-}
-
-.profile__actions {
-  justify-content: flex-start;
-  margin-top: 24px;
 }
 
 /* Avatar: same soft-edged oval as the home page cats */
@@ -1235,6 +1214,8 @@ input:autofill {
 
 /* Hearts (menus + favourites) */
 .heart {
+  display: inline-grid;
+  place-items: center;
   flex: none;
   width: 32px;
   height: 32px;
@@ -1252,11 +1233,6 @@ input:autofill {
   transform: scale(1.15);
 }
 
-.heart {
-  display: inline-grid;
-  place-items: center;
-}
-
 .heart__icon {
   display: block;
   width: 22px;
@@ -1271,31 +1247,6 @@ input:autofill {
 .theme-checkout .heart.is-on,
 .theme-lunch .heart.is-on {
   color: var(--yellow);
-}
-
-/* Account settings, tucked away */
-.settings {
-  max-width: 900px;
-  margin: 48px auto 24px;
-  padding-top: 24px;
-  border-top: 2px solid var(--ink);
-}
-
-.settings summary {
-  cursor: pointer;
-  list-style: none;
-}
-
-.settings summary::-webkit-details-marker {
-  display: none;
-}
-
-.settings summary::after {
-  content: ' ▾';
-}
-
-.settings[open] summary::after {
-  content: ' ▴';
 }
 
 /* Edit-profile ticket extras */
@@ -1373,13 +1324,7 @@ input:autofill {
 
 @media (max-width: 720px) {
   .profile {
-    grid-template-columns: 1fr;
-    justify-items: center;
     text-align: center;
-  }
-
-  .profile__body {
-    width: 100%;
   }
 
   .profile__bio,
@@ -1391,15 +1336,12 @@ input:autofill {
   .scale__head .section-label {
     text-align: left;
   }
-
-  .profile__actions {
-    justify-content: center;
-  }
 }
 
 /* Menu rows get a heart on the right when logged in */
 .menu-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 4px;
 }
@@ -1415,14 +1357,6 @@ input:autofill {
 
 .menu-row__loved {
   font-weight: 600;
-}
-
-/* Long display names shouldn't push the header around */
-.navLink > span:first-child {
-  max-width: 16ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .heart--inline {
@@ -1587,10 +1521,6 @@ input:autofill {
   text-align: center;
 }
 
-.settings .account__logout {
-  margin-top: 32px;
-}
-
 @media (max-width: 600px) {
   .pw-form {
     grid-template-columns: 1fr;
@@ -1607,10 +1537,6 @@ input:autofill {
 }
 
 /* ---------- RPG character sheet ---------- */
-.profile {
-  display: block;
-}
-
 /* RPG-style window: rounded ruled box with a second inner line */
 .window {
   position: relative;
@@ -1802,10 +1728,6 @@ input:autofill {
   align-items: start;
 }
 
-.sheet__extras .favorites {
-  margin: 0;
-}
-
 @media (max-width: 900px) {
   .sheet__top {
     grid-template-columns: auto minmax(0, 1fr);
@@ -1847,9 +1769,10 @@ input:autofill {
   text-align: left;
 }
 
+/* roomy frames so names aren't squeezed */
 .party__frames {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
 }
 
@@ -1922,16 +1845,16 @@ input:autofill {
   min-width: 0;
 }
 
+/* never clip names: long ones wrap */
 .party__name {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  gap: 2px 6px;
   font-family: var(--serif);
   font-size: 22px;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .party__leader {
@@ -2004,8 +1927,22 @@ input:autofill {
 }
 
 .settings summary {
-  text-align: left;
   margin: 0;
+  text-align: left;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings summary::after {
+  content: ' ▾';
+}
+
+.settings[open] summary::after {
+  content: ' ▴';
 }
 
 .settings[open] summary {
@@ -2120,21 +2057,9 @@ input:autofill {
   font-variant-numeric: tabular-nums;
 }
 
-.points-banner__hint {
-  font-size: 13px;
-  opacity: 0.75;
-}
-
 .sheet__bonus {
   font-size: 0.7em;
   opacity: 0.75;
-}
-
-.stepper {
-  display: inline-flex;
-  gap: 4px;
-  margin-left: 12px;
-  align-self: center;
 }
 
 .stepper button {
@@ -2248,39 +2173,6 @@ body:has(.chat-fab) .thumb {
   bottom: calc(var(--gutter) + 60px);
 }
 
-/* ---------- Header fade (content scrolls under the nav and fades out) ----------
-   Mostly solid page colour behind the links, then a soft fade below them,
-   instead of a hard-edged bar. */
-.site-header {
-  background: linear-gradient(
-    to bottom,
-    var(--page-bg, var(--red)) 0%,
-    var(--page-bg, var(--red)) 55%,
-    color-mix(in srgb, var(--page-bg, var(--red)) 82%, transparent) 100%
-  );
-}
-
-.site-header::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 20px;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--page-bg, var(--red)) 82%, transparent),
-    color-mix(in srgb, var(--page-bg, var(--red)) 0%, transparent)
-  );
-}
-
-/* breathing room so nothing sits in the header fade until you scroll */
-main {
-  padding-top: 24px;
-}
-
-
 /* ---------- Chat window: a twin of the Create meal ticket ---------- */
 .chat {
   --ticket-ink: #5a2a82;
@@ -2313,9 +2205,6 @@ main {
   letter-spacing: -0.02em;
   line-height: 1.05;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .chat__frame {
@@ -2704,19 +2593,6 @@ main {
   min-width: 0;
 }
 
-.catalog-row__text {
-  display: grid;
-  min-width: 0;
-}
-
-.catalog-row__meals {
-  font-size: 12px;
-  opacity: 0.7;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .catalog-row:not(.is-on) .list-row__name {
   opacity: 0.75;
 }
@@ -2769,40 +2645,7 @@ main {
   letter-spacing: 0.04em;
 }
 
-/* Party frames: never clip names — let long ones wrap, and give frames room */
-.party__frames {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-}
-
-.party__name {
-  flex-wrap: wrap;
-  row-gap: 2px;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: anywhere;
-  line-height: 1.05;
-}
-
-/* same for the header link, chat title and other name spots */
-.navLink > span:first-child {
-  max-width: none;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-
-.chat__title {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-}
-
 /* ---------- Saved Meals: menu row tools, meal ticket extras ---------- */
-.menu-row {
-  flex-wrap: wrap;
-}
-
 .menu-row__tools {
   display: flex;
   flex-wrap: wrap;
@@ -2830,10 +2673,13 @@ main {
   font-style: italic;
 }
 
-/* − 2 + : boxed, ruled like the ticket */
+/* − 2 + : boxed, ruled like the ticket (also the stat allocation stepper) */
 .stepper {
   display: inline-flex;
   align-items: stretch;
+  align-self: center;
+  gap: 4px;
+  margin-left: 12px;
 }
 
 .stepper__label {
