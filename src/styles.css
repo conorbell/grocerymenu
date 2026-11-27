@@ -305,6 +305,11 @@ main {
   align-items: baseline;
 }
 
+/* Long names wrap: keep the leader and "add" on the last line */
+.menu-row__line {
+  align-items: last baseline;
+}
+
 .menu-row__name,
 .list-row__name {
   font-family: var(--serif);
@@ -362,8 +367,8 @@ main {
   right: var(--gutter);
   bottom: var(--gutter);
   z-index: 25;
-  width: 92px;
-  height: 92px;
+  width: clamp(140px, 20vw, 260px);
+  aspect-ratio: 1;
   overflow: hidden;
   border: 3.5px solid var(--frame, var(--yellow));
   background: var(--frame, var(--yellow));
@@ -897,8 +902,7 @@ main {
   }
 
   .thumb {
-    width: 72px;
-    height: 72px;
+    width: 140px;
   }
 }
 
@@ -2796,9 +2800,6 @@ main {
   background: none;
   color: inherit;
   font: inherit;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -2813,9 +2814,6 @@ main {
 .stepper {
   display: inline-flex;
   align-items: stretch;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .stepper__label {

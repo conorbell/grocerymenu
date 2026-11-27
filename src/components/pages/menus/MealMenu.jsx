@@ -35,7 +35,7 @@ const ServingsStepper = ({ plannedMeal }) => {
 };
 
 const MealRow = ({ meal, onPreview, onEdit }) => {
-  const { planMeal, plannedMealFor, myProfile, profilesError, isFavorite, toggleFavorite, favoritedBy } = useList();
+  const { planMeal, removePlannedMeal, plannedMealFor, myProfile, profilesError, isFavorite, toggleFavorite, favoritedBy } = useList();
   const [note, setNote] = useState(null);
   const planned = plannedMealFor(meal.id);
   const canFavorite = Boolean(myProfile) && !profilesError;
@@ -77,6 +77,19 @@ const MealRow = ({ meal, onPreview, onEdit }) => {
       </button>
       <span className="menu-row__tools">
         {planned && <ServingsStepper plannedMeal={planned} />}
+        {planned && (
+          <button
+            type="button"
+            className="menu-row__link"
+            aria-label={`Remove ${meal.title} and its ingredients from the list`}
+            onClick={() => {
+              setNote(null);
+              removePlannedMeal(planned);
+            }}
+          >
+            remove from list
+          </button>
+        )}
         {meal.recipe_url && (
           <a className="menu-row__link" href={meal.recipe_url} target="_blank" rel="noopener noreferrer">
             recipe ↗
