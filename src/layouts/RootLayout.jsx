@@ -194,6 +194,10 @@ export const RootLayout = () => {
   useEffect(() => {
     document.body.className = theme;
     document.documentElement.className = theme; // colours behind the page too
+    // Phone browsers tint their bars from theme-color, and only re-read the
+    // page itself on a full load, so keep it on this page's colour.
+    const pageColour = getComputedStyle(document.documentElement).getPropertyValue('--page-bg').trim();
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', pageColour);
   }, [theme]);
 
   return (
