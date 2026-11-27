@@ -199,7 +199,6 @@ export const RootLayout = () => {
 
       {showCreate && (
         <CreateMeal
-          // on a breakfast/lunch/dinner page, new Meals default to that Category
           defaultCategory={CATEGORY_KEYS.find((key) => pathname === `/${key}`) || ''}
           onClose={closeCreate}
         />

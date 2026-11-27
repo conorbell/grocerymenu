@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useList } from '../functions/ListContextWrapper';
-import { CATEGORIES } from '../../lib/menuPages';
+import { CATEGORIES } from '../../lib/mealRules';
 import { SignInPrompt } from '../SignInPrompt';
 import { HeartIcon } from '../HeartIcon';
 import { ingredientLabel } from '../../lib/ingredients';
@@ -25,14 +25,14 @@ const FullMenu = () => {
       )}
 
       <div className="full-menu__sections">
-        {CATEGORIES.map(({ key, label, path }) => {
+        {CATEGORIES.map((key) => {
           const meals = byCategory[key] || [];
           if (status !== 'ready') return null;
           return (
             <section key={key} className="full-menu__section">
               <h2 className="section-label full-menu__heading">
-                <Link to={path}>
-                  {label} <span className="section-label__count">{meals.length}</span>
+                <Link to={`/${key}`}>
+                  {key} <span className="section-label__count">{meals.length}</span>
                 </Link>
               </h2>
               <ul className="menu-list">
@@ -58,8 +58,8 @@ const FullMenu = () => {
                   );
                 })}
               </ul>
-              <Link className="full-menu__more" to={path}>
-                Add from {label.toLowerCase()} →
+              <Link className="full-menu__more" to={`/${key}`}>
+                Add from {key} →
               </Link>
             </section>
           );

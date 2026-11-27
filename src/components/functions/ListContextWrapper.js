@@ -105,7 +105,7 @@ const saveCachedProfiles = (rows) => {
 const ListProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(!supabase);
-  const [sharedData, setSharedData] = useState(EMPTY);
+  const [data, setData] = useState(EMPTY);
   const [menu, setMenu] = useState([]);
   const [menuStatus, setMenuStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [syncError, setSyncError] = useState(null);
@@ -117,8 +117,6 @@ const ListProvider = ({ children }) => {
   const refetchTimer = useRef(null);
 
   const shared = Boolean(supabase && session);
-  const data = shared ? sharedData : EMPTY;
-  const setData = setSharedData;
 
   // ---- auth ----
   useEffect(() => {
@@ -133,7 +131,7 @@ const ListProvider = ({ children }) => {
 
   const refresh = useCallback(async () => {
     try {
-      setSharedData(await fetchShared());
+      setData(await fetchShared());
       setSyncError(null);
     } catch (err) {
       console.error(err);
@@ -177,7 +175,7 @@ const ListProvider = ({ children }) => {
         setProfiles([]);
         setProfilesLoaded(false);
         saveCachedProfiles(null);
-        setSharedData(EMPTY);
+        setData(EMPTY);
         setMenu([]);
         setMenuStatus('loading');
       }
@@ -283,7 +281,6 @@ const ListProvider = ({ children }) => {
   // use, null to remove the photo, undefined to leave it as it is.
   // Returns { ok, meal } or { ok: false, problems: [...] }.
   const saveMeal = async (draft, { photo } = {}) => {
-    if (!shared) return { ok: false, problems: ['Log in to change the menu.'] };
     const problems = validateMeal(draft, menu);
     if (problems.length) return { ok: false, problems };
     const existing = draft.id ? menu.find((meal) => meal.id === draft.id) : null;
@@ -295,13 +292,7 @@ const ListProvider = ({ children }) => {
       servings: Math.max(1, Math.round(Number(draft.servings) || 1)),
       recipe_url: draft.recipe_url?.trim() || null,
       photo_url: existing ? existing.photo_url : null,
-      ingredients: draft.ingredients
-        .filter((ing) => String(ing.name || '').trim())
-        .map((ing) => ({
-          name: ing.name.trim(),
-          quantity: round(Number(ing.quantity) > 0 ? Number(ing.quantity) : 1),
-          unit: String(ing.unit || '').trim(),
-        })),
+      ingredients: draft.ingredients.map(({ name, quantity, unit }) => ({ name, quantity, unit })),
     };
     try {
       if (photo) row.photo_url = await uploadMealPhoto(id, photo);
@@ -331,15 +322,12 @@ const ListProvider = ({ children }) => {
     if (error) return { ok: false, message: error.message };
     removeStoredPhoto(meal.photo_url);
     setMenu((prev) => prev.filter((m) => m.id !== meal.id));
-    setProfiles((prev) =>
-      prev.map((p) => (p.favorites?.includes(meal.id) ? { ...p, favorites: p.favorites.filter((f) => f !== meal.id) } : p))
-    );
     return { ok: true };
   };
 
   // ---- the list ----
-  // Put a Meal on the list for `servings`. Returns { ok } or, when it's
-  // already there, { alreadyPlanned } (a Meal is planned at most once).
+  // Put a Meal on the list for `servings`. Returns { alreadyPlanned } when
+  // it's already there (a Meal is planned at most once).
   const planMeal = (meal, servings = meal.servings) => {
     const result = planMealRule(meal, servings, data.plannedMeals);
     if (result.alreadyPlanned) return result;
@@ -354,7 +342,7 @@ const ListProvider = ({ children }) => {
       return supabase.from('grocery_items').insert(items);
     });
     bumpStats({ meals: 1, added: items.length });
-    return { ok: true, plannedMeal };
+    return result;
   };
 
   const itemsOf = (plannedMeal) => data.items.filter((item) => item.planned_meal_id === plannedMeal.id);
@@ -489,18 +477,11 @@ const ListProvider = ({ children }) => {
     return { ok: true };
   };
 
-  // Storage path of one of our avatar URLs ("<user id>/<timestamp>.jpg").
-  const avatarPath = (url) => {
-    const marker = '/object/public/avatars/';
-    const i = url ? url.indexOf(marker) : -1;
-    return i === -1 ? null : decodeURIComponent(url.slice(i + marker.length).split('?')[0]);
-  };
-
   // `file` can be a photo straight from the picker (gets shrunk here) or a
   // JPEG that's already been cropped to size (`{ prepared: true }`).
   const uploadAvatar = async (file, { prepared = false } = {}) => {
     if (!userId) return { ok: false, message: 'Not logged in' };
-    const previousPath = avatarPath(myProfile?.avatar_url);
+    const previousPath = storagePath('avatars', myProfile?.avatar_url);
     try {
       const blob = prepared ? file : await resizeImage(file);
       const path = `${userId}/${Date.now()}.jpg`;
