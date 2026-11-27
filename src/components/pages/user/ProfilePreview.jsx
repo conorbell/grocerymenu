@@ -74,6 +74,7 @@ const ChatDemo = ({ people }) => {
         { id: `n${m.length}`, sender_id: 'me', body: text.trim(), created_at: new Date().toISOString() },
       ]),
     remove: (id) => setMessages((m) => m.filter((x) => x.id !== id)),
+    retry: () => {},
     notifyTyping: () => {},
     typingIds: ['mate'],
     reads: { mate: new Date().toISOString() },

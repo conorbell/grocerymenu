@@ -38,6 +38,7 @@ export const ChatPanel = ({ people: peopleOverride } = {}) => {
   const { user, myProfile, mateProfiles, onlineIds = [] } = peopleOverride || list;
   const chat = useChat();
   const [draft, setDraft] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null); // message id armed for deleting
   const bodyRef = useRef(null);
   const stickToBottom = useRef(true);
   const inputRef = useRef(null);
@@ -72,9 +73,18 @@ export const ChatPanel = ({ people: peopleOverride } = {}) => {
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight;
   }, [chat.messages, chat.typingIds.length, chat.open]);
 
+  // Jump to the message box only with a mouse: on a phone it would pop the
+  // keyboard up over the messages every time the chat opens.
   useEffect(() => {
-    if (chat.open) inputRef.current?.focus();
+    if (chat.open && window.matchMedia?.('(pointer: fine)').matches) inputRef.current?.focus();
   }, [chat.open]);
+
+  // A first tap on × arms it ("Delete?"); it disarms after a few seconds.
+  useEffect(() => {
+    if (!confirmDelete) return undefined;
+    const t = setTimeout(() => setConfirmDelete(null), 3000);
+    return () => clearTimeout(t);
+  }, [confirmDelete]);
 
   useEffect(() => {
     if (!chat.open) return undefined;
@@ -148,7 +158,7 @@ export const ChatPanel = ({ people: peopleOverride } = {}) => {
     setDraft('');
   };
 
-  const notSetUp = chat.error && /relation|does not exist|schema cache/i.test(chat.error);
+  const notSetUp = Boolean(chat.error) && /relation|does not exist|schema cache/i.test(chat.error);
 
   return (
     <aside className="chat" role="dialog" aria-label={`Chat with ${mateName}`} ref={panelRef}>
@@ -185,6 +195,11 @@ export const ChatPanel = ({ people: peopleOverride } = {}) => {
               </button>
             )}
             {chat.loading && <p className="chat__note">Loading…</p>}
+            {chat.error && !chat.loading && (
+              <p className="chat__note" role="alert">
+                Couldn't reach the chat. It will catch up when your connection is back.
+              </p>
+            )}
             {!chat.loading && groups.length === 0 && !chat.olderDay && (
               <p className="chat__note">No messages yet. Say hi to {mateName}.</p>
             )}
@@ -219,18 +234,31 @@ export const ChatPanel = ({ people: peopleOverride } = {}) => {
                         {mine && !m.pending && (
                           <button
                             type="button"
-                            className="msg__delete"
-                            aria-label="Delete message"
+                            className={`msg__delete${confirmDelete === m.id ? ' is-armed' : ''}`}
+                            aria-label={confirmDelete === m.id ? 'Tap again to delete' : 'Delete message'}
                             title="Delete"
-                            onClick={() => chat.remove(m.id)}
+                            onClick={() => {
+                              if (confirmDelete === m.id) {
+                                setConfirmDelete(null);
+                                chat.remove(m.id);
+                              } else {
+                                setConfirmDelete(m.id);
+                              }
+                            }}
                           >
-                            ×
+                            {confirmDelete === m.id ? 'Delete?' : '×'}
                           </button>
                         )}
                       </p>
-                      {(m.failed || (isMyLast && seen)) && (
-                        <span className="msg__meta">{m.failed ? "Didn't send" : 'Seen'}</span>
+                      {m.failed && (
+                        <span className="msg__meta">
+                          Didn't send ·{' '}
+                          <button type="button" className="msg__retry" onClick={() => chat.retry(m.id)}>
+                            Try again
+                          </button>
+                        </span>
                       )}
+                      {!m.failed && isMyLast && seen && <span className="msg__meta">Seen</span>}
                     </div>
                   );
                 })}
