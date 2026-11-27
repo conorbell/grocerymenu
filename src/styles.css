@@ -2893,8 +2893,18 @@ main {
 }
 
 .cell .select-wrap select {
-  font-size: 20px;
+  width: 100%;
+  padding: 0 28px 0 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 22px;
+  color: var(--ticket-ink);
   text-transform: capitalize;
+}
+
+.cell .select-wrap select:focus {
+  outline: none;
 }
 
 .meal-photo {
