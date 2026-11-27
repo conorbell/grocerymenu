@@ -1080,18 +1080,28 @@ main {
   animation: caption 2.5s ease forwards;
 }
 
+/* A button, not more subtitle: black box, white UI label. */
 .caption__undo {
-  padding: 0 0.15em;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  -webkit-text-stroke: inherit;
-  paint-order: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+  margin-left: 0.3em;
+  padding: 0.3em 0.7em;
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  font-family: var(--sans);
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
   cursor: pointer;
   pointer-events: auto;
+}
+
+.caption__undo:hover {
+  background: #fff;
+  color: var(--ink);
 }
 
 @keyframes caption {
@@ -1129,6 +1139,11 @@ main {
   .navLink--profile,
   .thumb {
     display: none;
+  }
+
+  /* clear of the corner buttons (Create meal, Chat) */
+  .caption {
+    bottom: 80px;
   }
 
   .nav {
