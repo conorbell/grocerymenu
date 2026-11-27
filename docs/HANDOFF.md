@@ -65,11 +65,10 @@ src/
   lib/
     supabase.js              client (null when not configured)
     mealRules.js             pure Menu/Planned meal rules (validate, plan, rescale,
-                               edit, sort); the one tested module
+                               edit, sort) + the category list; the one tested module
     rpgStats.js              LV/EXP/HP/MP/class/stats + stat points (tweak here)
-    ingredients.js           recipe ingredient = "egg" or {name,quantity,unit}
+    ingredients.js           ingredient labels (Meals store {name,quantity,unit})
     shareList.js             "Share list" text + share sheet / copy fallback
-    menuPages.js             the three category pages
     image.js                 resize/crop photos before upload
     units.js                 unit dropdown values
   components/
@@ -166,8 +165,8 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
    wins: `.profile`, `.site-header`, `.party__frames`, nav labels…). Merge,
    delete dead styles (old chat/ticket variants). Keep the no-radius rule last.
 3. **Remove dead code/deps**: empty `new.css`, commented `userContext.js`;
-   unused packages (nodemon, concurrently now too) (mongoose, mongodb, db-conn, react-player,
-   react-audio-player, react-style-tag, node-fetch, url-loader,
+   unused packages (nodemon, concurrently, mongoose, mongodb, db-conn,
+   react-player, react-audio-player, react-style-tag, node-fetch, url-loader,
    assets-webpack-plugin, webpack-hot-middleware, path). `npm audit` reports 7
    vulns (1 critical) in prod deps.
 4. Small bugs: untick/re-tick double-counts `items_ticked`; chat unread badge
