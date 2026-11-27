@@ -9,16 +9,8 @@ import React, {
 } from 'react';
 import { supabase } from '../../lib/supabase';
 import { resizeImage } from '../../lib/image';
-import {
-  validateMeal,
-  planMeal as planMealRule,
-  editPlannedMeal,
-  rescalePlannedMeal,
-  menuByCategory,
-  toItem,
-  round,
-  newId,
-} from '../../lib/mealRules';
+import { validateMeal, menuByCategory, newId } from '../../lib/mealRules';
+import * as list from '../../lib/list';
 
 /*
  * The Menu, the meal plan and the shopping list, shared live between
@@ -31,25 +23,30 @@ import {
  * it; planned_meal_id === null means an Extra item ("paper towels").
  *
  * Everything needs you to be logged in: logged out there is no Menu or list.
+ *
+ * What each list change does lives in lib/list.js; this file applies it
+ * locally straight away and then saves its `writes` (runWrites).
  */
 
-const EMPTY = { plannedMeals: [], items: [] };
 const MEAL_PHOTOS = 'meal-photos';
 
 const ListContext = createContext();
 
-const groupKey = (item) => `${item.name.toLowerCase()}|${item.unit || ''}`;
-
-// "500 g", "2 cups"; plain counts show as "×3".
-export const formatAmount = ({ quantity, unit }) => {
-  if (!unit) return `×${quantity}`;
-  const plural =
-    quantity !== 1 &&
-    /^(cup|can|bunch|clove|pack|slice|jar|bag|bottle|head)$/.test(unit);
-  return `${quantity} ${unit}${plural ? (unit === 'bunch' ? 'es' : 's') : ''}`;
+// ---------- Supabase ----------
+// Save a list change's writes in order, stopping at the first error.
+const runWrites = async (writes) => {
+  for (const { table, insert, update, ids, delete: deleteIds, deleteAll } of writes) {
+    const rows = supabase.from(table);
+    let res;
+    if (insert) res = await rows.insert(insert);
+    else if (update) res = await rows.update(update).in('id', ids);
+    else if (deleteIds) res = await rows.delete().in('id', deleteIds);
+    else if (deleteAll) res = await rows.delete().not('id', 'is', null);
+    if (res.error) return res;
+  }
+  return { error: null };
 };
 
-// ---------- Supabase ----------
 const fetchShared = async () => {
   const [plannedMeals, items] = await Promise.all([
     supabase.from('planned_meals').select('id, title, meal_id, servings').order('created_at'),
@@ -105,7 +102,9 @@ const saveCachedProfiles = (rows) => {
 const ListProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(!supabase);
-  const [data, setData] = useState(EMPTY);
+  const [data, setData] = useState(list.EMPTY_LIST);
+  // the latest list, so back-to-back changes build on each other
+  const dataRef = useRef(list.EMPTY_LIST);
   const [menu, setMenu] = useState([]);
   const [menuStatus, setMenuStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [syncError, setSyncError] = useState(null);
@@ -129,15 +128,20 @@ const ListProvider = ({ children }) => {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const setList = useCallback((next) => {
+    dataRef.current = next;
+    setData(next);
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
-      setData(await fetchShared());
+      setList(await fetchShared());
       setSyncError(null);
     } catch (err) {
       console.error(err);
       setSyncError(err.message || 'Could not load the shared list');
     }
-  }, []);
+  }, [setList]);
 
   const refreshMenu = useCallback(async () => {
     try {
@@ -175,7 +179,7 @@ const ListProvider = ({ children }) => {
         setProfiles([]);
         setProfilesLoaded(false);
         saveCachedProfiles(null);
-        setData(EMPTY);
+        setList(list.EMPTY_LIST);
         setMenu([]);
         setMenuStatus('loading');
       }
@@ -199,7 +203,7 @@ const ListProvider = ({ children }) => {
       clearTimeout(refetchTimer.current);
       supabase.removeChannel(channel);
     };
-  }, [shared, authReady, refresh, refreshMenu, refreshProfiles]);
+  }, [shared, authReady, refresh, refreshMenu, refreshProfiles, setList]);
 
   // ---- who's online right now (Supabase Presence) ----
   useEffect(() => {
@@ -326,111 +330,18 @@ const ListProvider = ({ children }) => {
   };
 
   // ---- the list ----
-  // Put a Meal on the list for `servings`. Returns { alreadyPlanned } when
-  // it's already there (a Meal is planned at most once).
-  const planMeal = (meal, servings = meal.servings) => {
-    const result = planMealRule(meal, servings, data.plannedMeals);
-    if (result.alreadyPlanned) return result;
-    const { plannedMeal, items } = result;
-    setData((prev) => ({
-      plannedMeals: [...prev.plannedMeals, plannedMeal],
-      items: [...prev.items, ...items],
-    }));
-    remote(async () => {
-      const res = await supabase.from('planned_meals').insert(plannedMeal);
-      if (res.error || !items.length) return res;
-      return supabase.from('grocery_items').insert(items);
-    });
-    bumpStats({ meals: 1, added: items.length });
-    return result;
+  // Apply a lib/list.js change: show it now, save it, count it.
+  // Returns the change ({ alreadyPlanned } when a Meal is already planned).
+  const commit = (change) => {
+    if (!change || change.alreadyPlanned) return change;
+    setList(change.next);
+    remote(() => runWrites(change.writes));
+    bumpStats(change.stats);
+    return change;
   };
+  const change = (op) => (...args) => commit(op(dataRef.current, ...args));
 
-  const itemsOf = (plannedMeal) => data.items.filter((item) => item.planned_meal_id === plannedMeal.id);
-
-  // Save the Planned meal edit form ({ servings, rows }). Never touches the Meal.
-  const updatePlannedMeal = (plannedMeal, changes) => {
-    const edit = editPlannedMeal(plannedMeal, itemsOf(plannedMeal), changes);
-    const updated = new Map(edit.updates.map((item) => [item.id, item]));
-    const deleted = new Set(edit.deletes);
-    setData((prev) => ({
-      plannedMeals: prev.plannedMeals.map((p) => (p.id === plannedMeal.id ? edit.plannedMeal : p)),
-      items: [
-        ...prev.items.filter((item) => !deleted.has(item.id)).map((item) => updated.get(item.id) || item),
-        ...edit.inserts,
-      ],
-    }));
-    remote(async () => {
-      const writes = [];
-      if (edit.plannedMeal.servings !== plannedMeal.servings) {
-        writes.push(supabase.from('planned_meals').update({ servings: edit.plannedMeal.servings }).eq('id', plannedMeal.id));
-      }
-      if (edit.deletes.length) writes.push(supabase.from('grocery_items').delete().in('id', edit.deletes));
-      if (edit.inserts.length) writes.push(supabase.from('grocery_items').insert(edit.inserts));
-      edit.updates.forEach(({ id, name, quantity, unit }) =>
-        writes.push(supabase.from('grocery_items').update({ name, quantity, unit }).eq('id', id))
-      );
-      const results = await Promise.all(writes);
-      return results.find((res) => res.error) || { error: null };
-    });
-    if (edit.inserts.length) bumpStats({ added: edit.inserts.length });
-  };
-
-  // Change how many a Planned meal serves; every quantity scales (ticks kept).
-  const setPlannedServings = (plannedMeal, servings) => {
-    const { items } = rescalePlannedMeal(plannedMeal, itemsOf(plannedMeal), servings);
-    updatePlannedMeal(plannedMeal, { servings, rows: items });
-  };
-
-  // Extra items (not tied to a Planned meal).
-  const addItem = (ingredient) => {
-    const item = toItem(ingredient, 1, null);
-    if (!item.name) return;
-    setData((prev) => ({ ...prev, items: [...prev.items, item] }));
-    remote(() => supabase.from('grocery_items').insert(item));
-    bumpStats({ added: 1 });
-  };
-
-  const removePlannedMeal = (plannedMeal) => {
-    setData((prev) => ({
-      plannedMeals: prev.plannedMeals.filter((m) => m.id !== plannedMeal.id),
-      items: prev.items.filter((item) => item.planned_meal_id !== plannedMeal.id),
-    }));
-    // grocery items for the meal are removed by ON DELETE CASCADE
-    remote(() => supabase.from('planned_meals').delete().eq('id', plannedMeal.id));
-  };
-
-  const removeGrocery = (group) => {
-    const ids = new Set(group.ids);
-    setData((prev) => ({ ...prev, items: prev.items.filter((item) => !ids.has(item.id)) }));
-    remote(() => supabase.from('grocery_items').delete().in('id', group.ids));
-  };
-
-  const toggleChecked = (group) => {
-    const ids = new Set(group.ids);
-    const checked = !group.checked;
-    setData((prev) => ({
-      ...prev,
-      items: prev.items.map((item) => (ids.has(item.id) ? { ...item, checked } : item)),
-    }));
-    remote(() => supabase.from('grocery_items').update({ checked }).in('id', group.ids));
-    if (checked) bumpStats({ ticked: 1 });
-  };
-
-  const clearChecked = () => {
-    const ids = data.items.filter((item) => item.checked).map((item) => item.id);
-    if (!ids.length) return;
-    setData((prev) => ({ ...prev, items: prev.items.filter((item) => !item.checked) }));
-    remote(() => supabase.from('grocery_items').delete().in('id', ids));
-  };
-
-  const clearLists = () => {
-    setData(EMPTY);
-    remote(async () => {
-      const res = await supabase.from('grocery_items').delete().not('id', 'is', null);
-      if (res.error) return res;
-      return supabase.from('planned_meals').delete().not('id', 'is', null);
-    });
-  };
+  const planMeal = (meal, servings = meal.servings) => commit(list.plan(dataRef.current, meal, servings));
 
   const signIn = async (email, password) => {
     if (!supabase) return { ok: false, message: 'Shared lists are not set up yet' };
@@ -525,31 +436,7 @@ const ListProvider = ({ children }) => {
     return error ? { ok: false, message: error.message } : { ok: true };
   };
 
-  // Same ingredient + unit shows as one line with the quantities added up.
-  const groceryList = useMemo(() => {
-    const groups = new Map();
-    data.items.forEach((item) => {
-      const key = groupKey(item);
-      const group = groups.get(key);
-      if (group) {
-        group.quantity = round(group.quantity + item.quantity);
-        group.ids.push(item.id);
-        group.checked = group.checked && item.checked;
-        group.extra = group.extra || !item.planned_meal_id;
-      } else {
-        groups.set(key, {
-          key,
-          name: item.name,
-          unit: item.unit || '',
-          quantity: item.quantity,
-          ids: [item.id],
-          checked: item.checked,
-          extra: !item.planned_meal_id,
-        });
-      }
-    });
-    return [...groups.values()];
-  }, [data.items]);
+  const groceryList = useMemo(() => list.groupItems(data.items), [data.items]);
 
   const menuSorted = useMemo(() => menuByCategory(menu), [menu]);
 
@@ -565,17 +452,17 @@ const ListProvider = ({ children }) => {
     plannedMeals: data.plannedMeals,
     mealList: data.plannedMeals.map((meal) => meal.title),
     plannedMealFor: (mealId) => data.plannedMeals.find((p) => p.meal_id === mealId) || null,
-    itemsOf,
+    itemsOf: (plannedMeal) => list.itemsOf(data, plannedMeal),
     groceryList,
     planMeal,
-    updatePlannedMeal,
-    setPlannedServings,
-    addItem,
-    removePlannedMeal,
-    removeGrocery,
-    toggleChecked,
-    clearChecked,
-    clearLists,
+    updatePlannedMeal: change(list.editPlanned),
+    setPlannedServings: change(list.rescalePlanned),
+    addItem: change(list.addExtra),
+    removePlannedMeal: change(list.removePlanned),
+    removeGrocery: change(list.removeGroup),
+    toggleChecked: change(list.toggleGroup),
+    clearChecked: change(list.clearChecked),
+    clearLists: change(list.clearAll),
     // sharing / auth
     sharingAvailable: Boolean(supabase),
     shared,

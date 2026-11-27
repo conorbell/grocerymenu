@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useList, formatAmount } from '../../functions/ListContextWrapper';
+import { useList } from '../../functions/ListContextWrapper';
+import { formatAmount } from '../../../lib/list';
 import { UNITS } from '../../../lib/units';
 import { buildShareText, shareList } from '../../../lib/shareList';
 import { EditPlannedMeal } from '../../CreateMeal';

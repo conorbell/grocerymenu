@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { useList, formatAmount } from '../functions/ListContextWrapper';
+import { useList } from '../functions/ListContextWrapper';
+import { formatAmount } from '../../lib/list';
 import { SignInPrompt } from '../SignInPrompt';
 import { ingredientName } from '../../lib/ingredients';
 
