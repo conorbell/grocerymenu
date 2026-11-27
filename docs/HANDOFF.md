@@ -32,7 +32,7 @@ HUD, and a household chat.
 ```bash
 npm install
 npm run dev        # webpack dev server :8080
-npm test           # Jest: the Menu / Planned meal rules (src/lib/mealRules.js)
+npm test           # Jest: src/lib/mealRules.js + src/lib/list.js
 ```
 
 - Needs `.env` (gitignored) with `SUPABASE_URL` and `SUPABASE_ANON_KEY`
@@ -42,6 +42,8 @@ npm test           # Jest: the Menu / Planned meal rules (src/lib/mealRules.js)
 - **You must be logged in.** Logged out, the Menu, list and grocery pages show a
   sign-in prompt (no browser-only lists any more).
 - Only one `npm run dev` at a time (port 8080).
+- `package.json` pins Node `26.x` for Vercel (18.x was discontinued). This Mac
+  uses Node 26 via Volta (`volta install node@26`).
 
 **Deploy:** `vercel deploy --prod` from the repo root (CLI is logged in). Vercel
 builds `npm run build` → `dist/` (copying `public/food` → `dist/food`) and
@@ -66,16 +68,21 @@ src/
   lib/
     supabase.js              client (null when not configured)
     mealRules.js             pure Menu/Planned meal rules (validate, plan, rescale,
-                               edit, sort) + the category list; the one tested module
+                               edit, sort) + the category list; tested
+    list.js                  pure shopping-list changes: each returns
+                               { next, writes, stats } (writes = plain data);
+                               line grouping + amounts; tested
     rpgStats.js              LV/EXP/HP/MP/class/stats + stat points (tweak here)
     ingredients.js           ingredient labels (Meals store {name,quantity,unit})
     shareList.js             "Share list" text + share sheet / copy fallback
     image.js                 resize/crop photos before upload
     units.js                 unit dropdown values
   components/
-    functions/ListContextWrapper.js   THE store: Menu (meals table), planned
-                                       meals, items, auth, profiles, favourites,
-                                       stats, presence (big file)
+    functions/ListContextWrapper.js   THE store: Menu (meals table), auth,
+                                       profiles, favourites, stats, presence;
+                                       list changes come from lib/list.js and
+                                       are saved by runWrites (the only list
+                                       code that talks to Supabase)
     functions/ChatContext.js          chat: load-by-day, realtime, typing, reads
     CreateMeal.jsx                    create/edit a Meal ticket + edit a
                                        Planned meal ticket
@@ -94,7 +101,7 @@ src/
                                        stats, settings, change password
     pages/user/Login.jsx              /user/login (Supabase email+password)
     pages/user/ProfilePreview.jsx     /user/preview, dev-only sample data
-  styles.css                 ALL styles (~3k lines, see "Known issues")
+  styles.css                 ALL styles (~2.85k lines)
 supabase/*.sql               database setup (see below)
 public/food/                 photos of the original 11 Meals (~100 KB each)
 public/cats/                 home-page slideshow photos (resized)
@@ -165,16 +172,24 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 1. **Saved meals is live** (deployed 2026-11-27, spec in
    `.scratch/save-custom-meals/`). Still untested by hand: adding a photo to a
    Meal, and live updates between the two phones.
-2. **Clean up `styles.css`**: many sections are defined twice (later override
-   wins: `.profile`, `.site-header`, `.party__frames`, nav labels…). Merge,
-   delete dead styles (old chat/ticket variants). Keep the no-radius rule last.
+2. **`styles.css` was cleaned 2026-11-27**: dead rules and overridden
+   duplicates removed, split sections merged (header fade now lives in the
+   Header section). Checked by diffing computed styles of every page (and the
+   modals) before/after at 390/1000/1300px: no visual change. Remaining
+   repeats are intentional (a shared rule plus a specific override).
+   `avatar--*` classes are built in `Avatar.jsx`, so a plain grep shows them as
+   unused; they aren't. Keep the no-radius rule last.
 3. **Dev tooling audit**: dead code and unused packages were removed
    2026-11-27; `npm audit --omit=dev` is clean. The dev/build tooling
    (webpack, webpack-dev-server and their deps) still reports vulns;
    `npm audit fix` should clear most, then check `npm run dev` / `build`.
    Unused assets still in `public/`: `oldStuff/`, `sniglet webfonts/`,
    `lilguy.jpg`, `myheadshot.png` (nothing references them; keep or delete).
-4. Small bugs: untick/re-tick double-counts `items_ticked`; shared-list
+4. Small bugs: untick/re-tick double-counts `items_ticked` (the count comes
+   from `toggleGroup` in `lib/list.js`; a real fix needs `bump_my_stats` to
+   accept a -1 or a per-item "ever ticked" flag); the "[adds … to the list]"
+   caption can get stuck, and shows on login, because `mealList` is a new
+   array every render (RootLayout `useAddedCaption`); shared-list
    realtime channel briefly subscribes twice after login; old saved lists may
    still contain "2 small potatoes" / "given up, have we?" items.
 5. Features discussed: group shopping list by aisle; maybe drop `/menu` (it
