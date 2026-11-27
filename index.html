@@ -7,6 +7,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@125,900&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">
+    <script>
+      // Paint the page colour before the app loads (keep in sync with themeFor in RootLayout.jsx)
+      (function () {
+        var page = location.pathname.split('/')[1];
+        var pages = ['breakfast', 'lunch', 'dinner', 'checkout', 'grocery', 'menu', 'user'];
+        document.documentElement.className = 'theme-' + (pages.indexOf(page) > -1 ? page : 'home');
+      })();
+    </script>
 </head>
 <body>
     <div id="root"></div>

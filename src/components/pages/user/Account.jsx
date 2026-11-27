@@ -727,7 +727,7 @@ export const Account = () => {
             <Command onClick={() => setAllocating(true)}>Allocate stats</Command>
           )}
           <Command to="/checkout">See the list</Command>
-          <Command onClick={() => openSettings()}>Settings</Command>
+          <Command onClick={() => openSettings()}>Account settings</Command>
         </ProfileCard>
       ) : (
         <ProfileCard key={inspected.id} profile={inspected} fallbackName="Party member" />

@@ -10,6 +10,7 @@ import { ChatPanel } from '../components/ChatPanel';
 import { useChat } from '../components/functions/ChatContext';
 
 // Each page gets its own flat background + headline colour (see styles.css).
+// index.html has a copy of this mapping so the colour is right before the app loads.
 const themeFor = (pathname) => {
   const page = pathname.split('/')[1];
   if (['breakfast', 'lunch', 'dinner', 'checkout', 'grocery', 'menu'].includes(page)) return `theme-${page}`;
@@ -108,7 +109,6 @@ export const RootLayout = () => {
     groceryList,
     mealList,
     user,
-    shared,
     syncError,
     myProfile,
     profilesLoaded,
@@ -145,8 +145,8 @@ export const RootLayout = () => {
         <nav className="nav nav--right">
           <NavItem
             to="/checkout"
-            label={`Checkout${groceryList.length ? ` (${groceryList.length})` : ''}`}
-            sub="your list"
+            label={`List${groceryList.length ? ` (${groceryList.length})` : ''}`}
+            sub="to buy"
             onMouseEnter={play}
           />
           <NavItem
@@ -158,7 +158,7 @@ export const RootLayout = () => {
                 ? myProfile?.display_name || (profilesLoaded ? 'Profile' : '\u00a0')
                 : 'Log in'
             }
-            sub={shared ? 'shared list' : 'to see the menu'}
+            sub={user ? 'your profile' : 'to see the menu'}
             onMouseEnter={playDick}
           />
         </nav>

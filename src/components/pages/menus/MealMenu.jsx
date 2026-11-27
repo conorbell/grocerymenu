@@ -126,7 +126,7 @@ export const MealMenu = ({ category, title }) => {
   const [editing, setEditing] = useState(null);
   const meals = menuByCategory[category] || [];
 
-  if (authReady && !user) return <SignInPrompt heading="MENU" />;
+  if (authReady && !user) return <SignInPrompt heading={title.toUpperCase()} />;
 
   const showPreview = (meal) => {
     setPreviewFailed(false);
@@ -136,12 +136,14 @@ export const MealMenu = ({ category, title }) => {
 
   return (
     <section className="page menu-page">
-      <h1 className="display">MENU</h1>
+      <h1 className="display">{title.toUpperCase()}</h1>
+      {meals.length > 0 && (
+        <p className="list-mode">
+          {meals.length} {meals.length === 1 ? 'dish' : 'dishes'}
+        </p>
+      )}
 
       <div className="menu-sheet">
-        <h2 className="section-label">
-          {title} <span className="section-label__count">{meals.length || ''}</span>
-        </h2>
 
         {status === 'loading' && <p className="menu-note">Loading meals…</p>}
         {status === 'error' && (

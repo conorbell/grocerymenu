@@ -174,7 +174,7 @@ main {
   font-weight: 900;
   font-stretch: 125%;
   font-variation-settings: 'wdth' 125;
-  font-size: clamp(48px, 11vw, 150px);
+  font-size: clamp(32px, 11vw, 150px);
   line-height: 0.85;
   letter-spacing: -0.02em;
   text-align: center;
