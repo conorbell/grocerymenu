@@ -24,10 +24,11 @@
 /* The page colour also goes on <html>, so anything behind the page (e.g. a
    browser's overscroll bounce) is the same colour, never black. Bounce is
    switched off where browsers allow it. */
+/* No fade on the page colour: iOS 26 Safari tints its bars from it at the
+   moment of a page change, and would catch the old colour mid-fade. */
 html {
   background: var(--page-bg, var(--red));
   overscroll-behavior: none;
-  transition: background-color 0.4s ease;
 }
 
 body {
@@ -40,7 +41,6 @@ body {
   font-size: 16px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.4s ease;
 }
 
 /* Per-page colours, taken from the reference site's palette:
