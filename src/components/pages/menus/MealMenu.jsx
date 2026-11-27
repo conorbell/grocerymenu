@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useList } from '../../functions/ListContextWrapper';
 import { HeartIcon } from '../../HeartIcon';
 import { CreateMeal } from '../../CreateMeal';
+import { PhotoReel } from '../../PhotoReel';
 import { SignInPrompt } from '../../SignInPrompt';
 import { ingredientLabel } from '../../../lib/ingredients';
+import { CATEGORIES } from '../../../lib/mealRules';
 
 // How many to plan a Meal for; fixed once it's on the list (ADR-0003).
 const ServingsPicker = ({ meal, servings, setServings }) => (
@@ -126,7 +128,10 @@ export const MealMenu = ({ category, title }) => {
   const [preview, setPreview] = useState(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [reelFrom, setReelFrom] = useState(null); // Meal id the photo reel starts at
+  const closeReel = useCallback(() => setReelFrom(null), []);
   const meals = menuByCategory[category] || [];
+  const photoMeals = CATEGORIES.flatMap((key) => menuByCategory[key] || []).filter((meal) => meal.photo_url);
 
   if (authReady && !user) return <SignInPrompt heading={title.toUpperCase()} />;
 
@@ -168,14 +173,21 @@ export const MealMenu = ({ category, title }) => {
       </div>
 
       {previewSrc && !previewFailed && (
-        <div className="thumb">
+        <button
+          type="button"
+          className="thumb"
+          aria-label={`See ${preview.title} and every other meal photo`}
+          onClick={() => setReelFrom(preview.id)}
+        >
           <img
             src={previewSrc}
             alt={preview.title}
             onError={() => setPreviewFailed(true)}
           />
-        </div>
+        </button>
       )}
+
+      {reelFrom && <PhotoReel meals={photoMeals} startId={reelFrom} onClose={closeReel} />}
 
       {editing && <CreateMeal meal={editing} onClose={() => setEditing(null)} />}
     </section>

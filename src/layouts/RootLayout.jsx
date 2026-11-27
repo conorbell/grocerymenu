@@ -71,17 +71,51 @@ const ChatFab = () => {
 };
 
 // Little two-line nav label, like "About / small caption".
-const NavItem = ({ to, label, sub, end, onMouseEnter }) => (
+const NavItem = ({ to, label, sub, end, onMouseEnter, className = 'navLink' }) => (
   <NavLink
     to={to}
     end={end}
     onMouseEnter={onMouseEnter}
-    className={({ isActive }) => `navLink${isActive ? ' active' : ''}`}
+    className={({ isActive }) => `${className}${isActive ? ' active' : ''}`}
   >
     <span>{label}</span>
     <span className="navLink__sub">{sub}</span>
   </NavLink>
 );
+
+// Three bars, or an X while the menu is open.
+const MenuIcon = ({ open }) => (
+  <svg className="menu-toggle__icon" viewBox="0 0 24 24" aria-hidden="true">
+    {open ? (
+      <path d="M4 4l16 16M20 4L4 20" />
+    ) : (
+      <path d="M2 5h20M2 12h20M2 19h20" />
+    )}
+  </svg>
+);
+
+// Phones: the nav folds into a full-screen menu behind the ☰ button.
+const useMenu = (pathname) => {
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    const phone = window.matchMedia('(max-width: 720px)');
+    const onChange = () => !phone.matches && setOpen(false);
+    phone.addEventListener('change', onChange);
+    return () => phone.removeEventListener('change', onChange);
+  }, []);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden'; // the page doesn't scroll behind the menu
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+  return [open, setOpen];
+};
 
 // Yellow subtitle-style caption that pops up when a meal is added. The list
 // arriving from Supabase (after logging in) isn't an add, so nothing shows
@@ -129,6 +163,18 @@ export const RootLayout = () => {
   const closeCreate = useCallback(() => setShowCreate(false), []);
   const { pathname } = useLocation();
   const caption = useAddedCaption(mealList, listLoaded);
+  const [menuOpen, setMenuOpen] = useMenu(pathname);
+
+  const listLabel = `List${groceryList.length ? ` (${groceryList.length})` : ''}`;
+  const profileLink = {
+    to: user ? '/user' : '/user/login',
+    label: !authReady
+      ? '\u00a0' // still reading your login: don't flash "Log in"
+      : user
+      ? myProfile?.display_name || (profilesLoaded ? 'Profile' : '\u00a0')
+      : 'Log in',
+    sub: user ? 'your profile' : 'to see the menu',
+  };
 
   const theme = themeFor(pathname);
   useEffect(() => {
@@ -139,6 +185,16 @@ export const RootLayout = () => {
   return (
     <div className="root-layout">
       <header className="site-header">
+        <button
+          type="button"
+          className="menu-toggle"
+          aria-expanded={menuOpen}
+          aria-controls="phone-menu"
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <MenuIcon open={menuOpen} />
+        </button>
         <nav className="nav nav--left">
           <NavItem to="/breakfast" label="Breakfast" sub="morning" onMouseEnter={play} />
           <NavItem to="/lunch" label="Lunch" sub="midday" onMouseEnter={play} />
@@ -149,26 +205,22 @@ export const RootLayout = () => {
           GROCERY MENU
         </NavLink>
         <nav className="nav nav--right">
-          <NavItem
-            to="/checkout"
-            label={`List${groceryList.length ? ` (${groceryList.length})` : ''}`}
-            sub="to buy"
-            onMouseEnter={play}
-          />
-          <NavItem
-            to={user ? '/user' : '/user/login'}
-            label={
-              !authReady
-                ? '\u00a0' // still reading your login: don't flash "Log in"
-                : user
-                ? myProfile?.display_name || (profilesLoaded ? 'Profile' : '\u00a0')
-                : 'Log in'
-            }
-            sub={user ? 'your profile' : 'to see the menu'}
-            onMouseEnter={playDick}
-          />
+          <NavItem to="/checkout" label={listLabel} sub="to buy" onMouseEnter={play} />
+          <NavItem {...profileLink} className="navLink navLink--profile" onMouseEnter={playDick} />
         </nav>
       </header>
+
+      {menuOpen && (
+        <nav id="phone-menu" className="phone-menu" aria-label="Menu">
+          <NavItem to="/" end label="Home" sub="start here" className="phone-menu__link" />
+          <NavItem to="/breakfast" label="Breakfast" sub="morning" className="phone-menu__link" />
+          <NavItem to="/lunch" label="Lunch" sub="midday" className="phone-menu__link" />
+          <NavItem to="/dinner" label="Dinner" sub="evening" className="phone-menu__link" />
+          <NavItem to="/grocery" label="Grocery" sub="every item" className="phone-menu__link" />
+          <NavItem to="/checkout" label={listLabel} sub="to buy" className="phone-menu__link" />
+          <NavItem {...profileLink} className="phone-menu__link" />
+        </nav>
+      )}
 
       {syncError && (
         <p className="sync-error" role="alert">
