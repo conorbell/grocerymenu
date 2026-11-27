@@ -11,7 +11,7 @@
       // Paint the page colour before the app loads (keep in sync with themeFor in RootLayout.jsx)
       (function () {
         var page = location.pathname.split('/')[1];
-        var pages = ['breakfast', 'lunch', 'dinner', 'checkout', 'grocery', 'menu', 'user'];
+        var pages = ['breakfast', 'lunch', 'dinner', 'checkout', 'grocery', 'user'];
         document.documentElement.className = 'theme-' + (pages.indexOf(page) > -1 ? page : 'home');
       })();
     </script>

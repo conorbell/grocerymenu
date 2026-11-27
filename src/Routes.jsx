@@ -13,7 +13,6 @@ import Lunch from "./components/pages/menus/Lunch"
 import Dinner from "./components/pages/menus/Dinner"
 import Checkout from "./components/pages/menus/Checkout"
 import Grocery from "./components/pages/Grocery"
-import FullMenu from "./components/pages/FullMenu"
 import { Login } from "./components/pages/user/Login"
 import { Account } from "./components/pages/user/Account"
 // dev-only sample profile page (stripped from production builds)
@@ -47,7 +46,6 @@ const router = createBrowserRouter(
     errorElement={<ErrorBoundary />}
     />
     <Route path="grocery" element={<Grocery />} errorElement={<ErrorBoundary />} />
-    <Route path="menu" element={<FullMenu />} errorElement={<ErrorBoundary />} />
     <Route path="checkout" element={<Checkout />} 
     errorElement={<ErrorBoundary />}
     />

@@ -13,7 +13,7 @@ import { useChat } from '../components/functions/ChatContext';
 // index.html has a copy of this mapping so the colour is right before the app loads.
 const themeFor = (pathname) => {
   const page = pathname.split('/')[1];
-  if (['breakfast', 'lunch', 'dinner', 'checkout', 'grocery', 'menu'].includes(page)) return `theme-${page}`;
+  if (['breakfast', 'lunch', 'dinner', 'checkout', 'grocery'].includes(page)) return `theme-${page}`;
   if (page === 'user') return 'theme-user';
   return 'theme-home';
 };
@@ -140,19 +140,14 @@ export const RootLayout = () => {
     <div className="root-layout">
       <header className="site-header">
         <nav className="nav nav--left">
-          <NavItem to="/" end label="Home" sub="start here" onMouseEnter={play} />
           <NavItem to="/breakfast" label="Breakfast" sub="morning" onMouseEnter={play} />
           <NavItem to="/lunch" label="Lunch" sub="midday" onMouseEnter={play} />
           <NavItem to="/dinner" label="Dinner" sub="evening" onMouseEnter={play} />
+          <NavItem to="/grocery" label="Grocery" sub="every item" onMouseEnter={play} />
         </nav>
-        <nav className="wordmark" aria-label="Grocery and menu">
-          <NavLink to="/grocery" className={({ isActive }) => `wordmark__link${isActive ? ' active' : ''}`} onMouseEnter={play}>
-            GROCERY
-          </NavLink>
-          <NavLink to="/menu" className={({ isActive }) => `wordmark__link${isActive ? ' active' : ''}`} onMouseEnter={play}>
-            MENU
-          </NavLink>
-        </nav>
+        <NavLink to="/" className="wordmark" aria-label="Grocery Menu, home" onMouseEnter={play}>
+          GROCERY MENU
+        </NavLink>
         <nav className="nav nav--right">
           <NavItem
             to="/checkout"

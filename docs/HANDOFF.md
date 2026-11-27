@@ -89,7 +89,6 @@ src/
     ChatPanel.jsx, PhotoCropper.jsx, SignInPrompt.jsx, Avatar.jsx, HeartIcon.jsx
     main.js                           Home (cat photo slideshow)
     pages/Grocery.jsx                 /grocery – every known item, tick to add/remove
-    pages/FullMenu.jsx                /menu – whole menu, read-only
     pages/menus/MealMenu.jsx          /breakfast /lunch /dinner (add, servings
                                        stepper, edit, recipe link, favourite);
                                        Breakfast/Lunch/Dinner.jsx are one-line
@@ -151,7 +150,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
   `theme-*` class on both `<html>` and `<body>` (`themeFor()` in RootLayout):
   home red/teal · breakfast yellow/orange · lunch orange/lavender ·
   dinner blue/teal · checkout peach/yellow · user teal/blue ·
-  grocery lavender/red · menu blue/yellow.
+  grocery lavender/red.
 - **No rounded corners anywhere, ever.** A global
   `border-radius: 0 !important` rule is kept as the **last** rule in
   `styles.css`. Photo ovals are a CSS mask, not radius, and are allowed.
@@ -190,8 +189,9 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
    accept a -1 or a per-item "ever ticked" flag); shared-list
    realtime channel briefly subscribes twice after login; old saved lists may
    still contain "2 small potatoes" / "given up, have we?" items.
-5. Features discussed: group shopping list by aisle; maybe drop `/menu` (it
-   duplicates the category pages).
+5. Features discussed: group shopping list by aisle. (`/menu` was dropped
+   2026-11-27; the nav is Breakfast/Lunch/Dinner/Grocery left, the GROCERY
+   MENU wordmark links home, List/profile right.)
 
 Issue tracking convention: local markdown in `.scratch/` (see
 `docs/agents/issue-tracker.md`).
