@@ -15,10 +15,10 @@ HUD, and a household chat.
 
 ## ⚠️ Read before touching git
 
-- **Work lives on the local branch `forks-ready`** (commit `249bce9`, 2026-11-27).
-  It is **not pushed yet**: this Mac had no GitHub credentials for git. To push:
-  `brew install gh` → `gh auth login` (HTTPS, let it authenticate Git) →
-  `git push -u origin forks-ready`.
+- **Work lives on branch `forks-ready`**, pushed to GitHub
+  (`origin/forks-ready`, tracking set up). `gh` is logged in on this Mac, and this
+  repo's git config raises `http.postBuffer` (pushes with photos failed with
+  HTTP 400 without it). Just `git push` from `forks-ready`.
 - **Local `main` is 25 commits behind GitHub `main`**, and GitHub `main` is a
   *different app* (a Next.js + Supabase rewrite from June 2024). Do **not** push
   this to `main` or pull `main` over it. Decide later which version becomes `main`.
@@ -159,23 +159,22 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 
 ## Known issues / next steps (prioritised)
 
-1. **Back up the code** (see git section above).
-2. **Saved meals is live** (deployed 2026-11-27, spec in
+1. **Saved meals is live** (deployed 2026-11-27, spec in
    `.scratch/save-custom-meals/`). Still untested by hand: adding a photo to a
    Meal, and live updates between the two phones.
-3. **Clean up `styles.css`**: many sections are defined twice (later override
+2. **Clean up `styles.css`**: many sections are defined twice (later override
    wins: `.profile`, `.site-header`, `.party__frames`, nav labels…). Merge,
    delete dead styles (old chat/ticket variants). Keep the no-radius rule last.
-4. **Remove dead code/deps**: empty `new.css`, commented `userContext.js`;
+3. **Remove dead code/deps**: empty `new.css`, commented `userContext.js`;
    unused packages (nodemon, concurrently now too) (mongoose, mongodb, db-conn, react-player,
    react-audio-player, react-style-tag, node-fetch, url-loader,
    assets-webpack-plugin, webpack-hot-middleware, path). `npm audit` reports 7
    vulns (1 critical) in prod deps.
-5. Small bugs: untick/re-tick double-counts `items_ticked`; chat unread badge
+4. Small bugs: untick/re-tick double-counts `items_ticked`; chat unread badge
    only counts the loaded (last 3) days; shared-list realtime channel briefly
    subscribes twice after login; old saved lists may still contain
    "2 small potatoes" / "given up, have we?" items.
-6. Features discussed: group shopping list by aisle; maybe drop `/menu` (it
+5. Features discussed: group shopping list by aisle; maybe drop `/menu` (it
    duplicates the category pages).
 
 Issue tracking convention: local markdown in `.scratch/` (see
