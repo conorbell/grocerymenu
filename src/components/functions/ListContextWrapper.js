@@ -18,9 +18,8 @@ import * as list from '../../lib/list';
  *
  *   menu:         Meals [{ id, title, category, servings, recipe_url, photo_url, ingredients }]
  *   plannedMeals: [{ id, title, meal_id, servings }]  (copies of Meals, ADR-0001)
- *   items:        [{ id, name, quantity, unit, checked, planned_meal_id }]
- * An item with planned_meal_id came from that Planned meal and goes away with
- * it; planned_meal_id === null means an Extra item ("paper towels").
+ *   items:        Shopping list lines [{ id, name, quantity, unit, checked, ever_ticked }],
+ *                 one per name + unit, independent of Planned meals (ADR-0003)
  *
  * Everything needs you to be logged in: logged out there is no Menu or list.
  *
@@ -51,8 +50,8 @@ const fetchShared = async () => {
   const [plannedMeals, items] = await Promise.all([
     supabase.from('planned_meals').select('id, title, meal_id, servings').order('created_at'),
     supabase
-      .from('grocery_items')
-      .select('id, name, quantity, unit, checked, planned_meal_id, added_by')
+      .from('list_items')
+      .select('id, name, quantity, unit, checked, ever_ticked, added_by')
       .order('created_at'),
   ]);
   if (plannedMeals.error) throw plannedMeals.error;
@@ -198,7 +197,7 @@ const ListProvider = ({ children }) => {
     const channel = supabase
       .channel('household-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'planned_meals' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'grocery_items' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'list_items' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'meals' }, () => refreshMenu())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => refreshProfiles())
       .subscribe();
@@ -439,8 +438,6 @@ const ListProvider = ({ children }) => {
     return error ? { ok: false, message: error.message } : { ok: true };
   };
 
-  const groceryList = useMemo(() => list.groupItems(data.items), [data.items]);
-
   const menuSorted = useMemo(() => menuByCategory(menu), [menu]);
 
   const value = {
@@ -456,15 +453,12 @@ const ListProvider = ({ children }) => {
     listLoaded,
     mealList: data.plannedMeals.map((meal) => meal.title),
     plannedMealFor: (mealId) => data.plannedMeals.find((p) => p.meal_id === mealId) || null,
-    itemsOf: (plannedMeal) => list.itemsOf(data, plannedMeal),
-    groceryList,
+    groceryList: data.items,
     planMeal,
-    updatePlannedMeal: change(list.editPlanned),
-    setPlannedServings: change(list.rescalePlanned),
-    addItem: change(list.addExtra),
+    addItem: change(list.add),
     removePlannedMeal: change(list.removePlanned),
-    removeGrocery: change(list.removeGroup),
-    toggleChecked: change(list.toggleGroup),
+    removeGrocery: change(list.removeLine),
+    toggleChecked: change(list.toggle),
     clearChecked: change(list.clearChecked),
     clearLists: change(list.clearAll),
     // sharing / auth
@@ -479,7 +473,7 @@ const ListProvider = ({ children }) => {
     myProfile,
     mateProfiles,
     onlineIds,
-    toBuyCount: groceryList.filter((item) => !item.checked).length,
+    toBuyCount: data.items.filter((item) => !item.checked).length,
     mealCount: data.plannedMeals.length,
     profilesError,
     profilesLoaded,

@@ -1,4 +1,4 @@
-import { validateMeal, planMeal, rescalePlannedMeal, editPlannedMeal, menuByCategory } from './mealRules';
+import { validateMeal, planMeal, menuByCategory } from './mealRules';
 
 const fishTacos = {
   id: 'm1',
@@ -64,7 +64,6 @@ describe('planMeal', () => {
       { name: 'small tortillas', quantity: 12, unit: '', checked: false },
       { name: 'lime', quantity: 1.5, unit: '', checked: false },
     ]);
-    items.forEach((item) => expect(item.planned_meal_id).toBe(plannedMeal.id));
   });
 
   test('scaled quantities are rounded to two decimals', () => {
@@ -83,74 +82,6 @@ describe('planMeal', () => {
     meal.ingredients[0].quantity = 5;
     meal.ingredients[0].name = 'cod';
     expect(items[0]).toMatchObject({ name: 'tilapia', quantity: 1 });
-  });
-});
-
-describe('rescalePlannedMeal', () => {
-  const planned = { id: 'p1', title: 'Fish tacos', meal_id: 'm1', servings: 2 };
-  const items = [
-    // tilapia was hand-edited from 1 lb to 2 lb on the list
-    { id: 'i1', name: 'tilapia', quantity: 2, unit: 'lb', checked: true, planned_meal_id: 'p1' },
-    { id: 'i2', name: 'lime', quantity: 1, unit: '', checked: false, planned_meal_id: 'p1' },
-  ];
-
-  test('every quantity scales, including hand edits, and ticked items stay ticked', () => {
-    const result = rescalePlannedMeal(planned, items, 4);
-    expect(result.plannedMeal).toEqual({ ...planned, servings: 4 });
-    expect(result.items).toEqual([
-      { ...items[0], quantity: 4 },
-      { ...items[1], quantity: 2 },
-    ]);
-  });
-
-  test('scaling down never rounds a quantity to nothing', () => {
-    const pinch = [{ ...items[1], quantity: 0.01 }];
-    expect(rescalePlannedMeal({ ...planned, servings: 4 }, pinch, 1).items[0].quantity).toBe(0.01);
-  });
-
-  test('a Planned meal with no recorded servings counts as 1', () => {
-    const old = { id: 'p0', title: 'Stir fry', meal_id: null, servings: null };
-    const result = rescalePlannedMeal(old, [{ ...items[1], planned_meal_id: 'p0' }], 3);
-    expect(result.items[0].quantity).toBe(3);
-  });
-});
-
-describe('editPlannedMeal', () => {
-  const planned = { id: 'p1', title: 'Fish tacos', meal_id: 'm1', servings: 2 };
-  const items = [
-    { id: 'i1', name: 'tilapia', quantity: 1, unit: 'lb', checked: true, planned_meal_id: 'p1' },
-    { id: 'i2', name: 'cumin', quantity: 1, unit: 'tsp', checked: false, planned_meal_id: 'p1' },
-    { id: 'i3', name: 'lime', quantity: 1, unit: '', checked: false, planned_meal_id: 'p1' },
-  ];
-
-  test('changes, removes and adds ingredients; untouched and ticked items are left alone', () => {
-    const result = editPlannedMeal(planned, items, {
-      servings: 2,
-      rows: [
-        { id: 'i1', name: 'tilapia', quantity: 1, unit: 'lb' }, // unchanged, ticked
-        { id: 'i3', name: 'lime', quantity: 2, unit: '' }, // changed
-        { name: 'cilantro', quantity: 1, unit: 'bunch' }, // new
-        { name: '   ', quantity: 1, unit: '' }, // blank row: ignored
-      ],
-    });
-    expect(result.updates).toEqual([{ ...items[2], quantity: 2 }]);
-    expect(result.deletes).toEqual(['i2']);
-    expect(result.inserts).toEqual([
-      expect.objectContaining({ name: 'cilantro', quantity: 1, unit: 'bunch', checked: false, planned_meal_id: 'p1' }),
-    ]);
-  });
-
-  test('editing a ticked item keeps it ticked', () => {
-    const result = editPlannedMeal(planned, items, {
-      servings: 2,
-      rows: [{ id: 'i1', name: 'tilapia', quantity: 2, unit: 'lb' }, items[1], items[2]],
-    });
-    expect(result.updates).toEqual([{ ...items[0], quantity: 2, checked: true }]);
-  });
-
-  test('the title cannot be changed, but servings can', () => {
-    const result = editPlannedMeal(planned, items, { title: 'Cod tacos', servings: 3, rows: items });
-    expect(result.plannedMeal).toEqual({ ...planned, servings: 3 });
   });
 });
 

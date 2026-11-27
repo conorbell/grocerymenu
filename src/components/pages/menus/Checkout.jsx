@@ -4,7 +4,6 @@ import { useList } from '../../functions/ListContextWrapper';
 import { formatAmount } from '../../../lib/list';
 import { UNITS } from '../../../lib/units';
 import { buildShareText, shareList } from '../../../lib/shareList';
-import { EditPlannedMeal } from '../../CreateMeal';
 import { SignInPrompt } from '../../SignInPrompt';
 
 const ShareIcon = () => (
@@ -80,7 +79,6 @@ const Checkout = () => {
   } = useList();
   const tickedCount = groceryList.filter((item) => item.checked).length;
   const [shareStatus, setShareStatus] = useState(null);
-  const [editing, setEditing] = useState(null);
 
   const handleShare = async () => {
     const result = await shareList(buildShareText(groceryList, mealList));
@@ -122,7 +120,7 @@ const Checkout = () => {
           <AddItemForm />
           <ul className="menu-list">
             {groceryList.map((item) => (
-              <li key={item.key} className={`list-row${item.checked ? ' is-checked' : ''}`}>
+              <li key={item.id} className={`list-row${item.checked ? ' is-checked' : ''}`}>
                 <button
                   className="tick"
                   role="checkbox"
@@ -132,7 +130,6 @@ const Checkout = () => {
                   <span className="tick__box" aria-hidden="true" />
                   <span className="list-row__name">{item.name}</span>
                 </button>
-                {item.extra && <span className="tag">extra</span>}
                 <span className="leader" aria-hidden="true" />
                 <span className="list-row__value">{formatAmount(item)}</span>
                 <button
@@ -175,16 +172,9 @@ const Checkout = () => {
                     {planned.servings > 0 && <span className="list-row__meta">serves {planned.servings}</span>}
                     <span className="leader" aria-hidden="true" />
                     <button
-                      className="text-btn list-row__edit"
-                      aria-label={`Edit ${planned.title} for this week`}
-                      onClick={() => setEditing(planned)}
-                    >
-                      edit
-                    </button>
-                    <button
                       className="remove-btn"
-                      aria-label={`Remove ${planned.title} and its ingredients`}
-                      title="Removes the meal and its ingredients"
+                      aria-label={`Remove ${planned.title}`}
+                      title="Removes the meal; its items stay on the list"
                       onClick={() => removePlannedMeal(planned)}
                     >
                       ×
@@ -196,8 +186,6 @@ const Checkout = () => {
           )}
         </div>
       </div>
-
-      {editing && <EditPlannedMeal plannedMeal={editing} onClose={() => setEditing(null)} />}
 
       {!isEmpty && (
         <div className="center">

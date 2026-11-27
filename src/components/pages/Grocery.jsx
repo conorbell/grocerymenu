@@ -18,32 +18,32 @@ const Grocery = () => {
   const [query, setQuery] = useState('');
 
   const catalog = useMemo(() => {
-    const items = new Map(); // lowercased name -> { key, name, groups on the list }
+    const items = new Map(); // lowercased name -> { key, name, its lines on the list }
     const ensure = (name) => {
       const key = name.trim().toLowerCase();
       if (!key) return null;
-      if (!items.has(key)) items.set(key, { key, name: name.trim(), groups: [] });
+      if (!items.has(key)) items.set(key, { key, name: name.trim(), lines: [] });
       return items.get(key);
     };
 
     menu.forEach((meal) => (meal.ingredients || []).forEach((ing) => ensure(ingredientName(ing))));
-    groceryList.forEach((group) => ensure(group.name)?.groups.push(group));
+    groceryList.forEach((line) => ensure(line.name)?.lines.push(line));
 
     return [...items.values()].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );
   }, [menu, groceryList]);
 
-  const onCount = catalog.filter((item) => item.groups.length).length;
+  const onCount = catalog.filter((item) => item.lines.length).length;
 
   const shown = catalog.filter((item) => {
-    if (filter === 'on' && !item.groups.length) return false;
-    if (filter === 'off' && item.groups.length) return false;
+    if (filter === 'on' && !item.lines.length) return false;
+    if (filter === 'off' && item.lines.length) return false;
     return !query.trim() || item.key.includes(query.trim().toLowerCase());
   });
 
   const toggle = (item) => {
-    if (item.groups.length) item.groups.forEach((group) => removeGrocery(group));
+    if (item.lines.length) item.lines.forEach((line) => removeGrocery(line));
     else addItem({ name: item.name, quantity: 1 });
   };
 
@@ -87,8 +87,8 @@ const Grocery = () => {
 
       <ul className="menu-list grocery-catalog">
         {shown.map((item) => {
-          const on = item.groups.length > 0;
-          const amount = on ? item.groups.map(formatAmount).join(' + ') : '';
+          const on = item.lines.length > 0;
+          const amount = on ? item.lines.map(formatAmount).join(' + ') : '';
           return (
             <li key={item.key} className={`list-row catalog-row${on ? ' is-on' : ''}`}>
               <button

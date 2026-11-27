@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useList } from './functions/ListContextWrapper';
 import { UNITS } from '../lib/units';
 import { cropImage } from '../lib/image';
-import { CATEGORIES, rescalePlannedMeal } from '../lib/mealRules';
+import { CATEGORIES } from '../lib/mealRules';
 import { PhotoCropper } from './PhotoCropper';
 
 let nextRowId = 1;
@@ -11,7 +11,6 @@ const toRows = (ingredients = []) =>
   ingredients.length
     ? ingredients.map((ing) => ({
         key: nextRowId++,
-        id: ing.id, // set for items already on the list
         quantity: String(ing.quantity ?? ''),
         unit: ing.unit || '',
         name: ing.name || '',
@@ -20,7 +19,7 @@ const toRows = (ingredients = []) =>
 const fromRows = (rows) =>
   rows
     .filter((row) => row.name.trim())
-    .map((row) => ({ id: row.id, name: row.name.trim(), quantity: Number(row.quantity) || 1, unit: row.unit }));
+    .map((row) => ({ name: row.name.trim(), quantity: Number(row.quantity) || 1, unit: row.unit }));
 
 const CloseX = ({ onClick }) => (
   <button type="button" className="ticket__close" onClick={onClick} aria-label="Close">
@@ -321,65 +320,6 @@ export const CreateMeal = ({ meal = null, defaultCategory = '', onClose }) => {
               Delete from menu
             </button>
           )}
-        </form>
-      </div>
-    </div>
-  );
-};
-
-// This week's copy of a Meal: servings and ingredients only, title locked.
-// Never changes the Meal on the Menu (ADR-0001).
-export const EditPlannedMeal = ({ plannedMeal, onClose }) => {
-  const { itemsOf, updatePlannedMeal } = useList();
-  const startServings = plannedMeal.servings || 1;
-  const [servings, setServings] = useState(startServings);
-  const [rows, setRows] = useState(() => toRows(itemsOf(plannedMeal)));
-  const shownServings = useRef(startServings);
-  useEscape(onClose);
-
-  // Changing servings rescales every quantity shown, hand edits included.
-  const changeServings = (value) => {
-    setServings(value);
-    const next = Number(value);
-    if (!(next >= 1)) return;
-    const scaled = rescalePlannedMeal(
-      { servings: shownServings.current },
-      rows.map((row) => ({ ...row, quantity: Number(row.quantity) || 1 })),
-      next
-    ).items;
-    shownServings.current = Math.round(next);
-    setRows(scaled.map((row) => ({ ...row, quantity: String(row.quantity) })));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    updatePlannedMeal(plannedMeal, { servings: shownServings.current, rows: fromRows(rows) });
-    onClose();
-  };
-
-  return (
-    <div className="modal-layer">
-      <div className="ticket" role="dialog" aria-labelledby="planned-meal-title">
-        <div className="ticket__head">
-          <CloseX onClick={onClose} />
-          <h2 id="planned-meal-title">{plannedMeal.title}</h2>
-        </div>
-
-        <form className="ticket__grid" onSubmit={handleSubmit}>
-          <label className="cell">
-            <span className="cell__label">Serves</span>
-            <input type="number" min="1" max="50" value={servings} onChange={(e) => changeServings(e.target.value)} />
-          </label>
-          <div className="cell cell--hint">
-            <span className="cell__label">This week only</span>
-            <span className="cell__value">menu unchanged</span>
-          </div>
-
-          <IngredientRows rows={rows} setRows={setRows} />
-
-          <button type="submit" className="cell cell--full ticket__submit">
-            Update list
-          </button>
         </form>
       </div>
     </div>

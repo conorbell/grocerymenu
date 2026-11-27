@@ -5,38 +5,36 @@ import { CreateMeal } from '../../CreateMeal';
 import { SignInPrompt } from '../../SignInPrompt';
 import { ingredientLabel } from '../../../lib/ingredients';
 
-const ServingsStepper = ({ plannedMeal }) => {
-  const { setPlannedServings } = useList();
-  const servings = plannedMeal.servings || 1;
-  return (
-    <span className="stepper" role="group" aria-label={`Servings of ${plannedMeal.title} on the list`}>
-      <span className="stepper__label">on list · serves</span>
-      <button
-        type="button"
-        className="stepper__btn"
-        aria-label="One fewer serving"
-        disabled={servings <= 1}
-        onClick={() => setPlannedServings(plannedMeal, servings - 1)}
-      >
-        −
-      </button>
-      <span className="stepper__value">{servings}</span>
-      <button
-        type="button"
-        className="stepper__btn"
-        aria-label="One more serving"
-        disabled={servings >= 50}
-        onClick={() => setPlannedServings(plannedMeal, servings + 1)}
-      >
-        +
-      </button>
-    </span>
-  );
-};
+// How many to plan a Meal for; fixed once it's on the list (ADR-0003).
+const ServingsPicker = ({ meal, servings, setServings }) => (
+  <span className="stepper" role="group" aria-label={`Servings of ${meal.title} to add`}>
+    <span className="stepper__label">add for</span>
+    <button
+      type="button"
+      className="stepper__btn"
+      aria-label="One fewer serving"
+      disabled={servings <= 1}
+      onClick={() => setServings(servings - 1)}
+    >
+      −
+    </button>
+    <span className="stepper__value">{servings}</span>
+    <button
+      type="button"
+      className="stepper__btn"
+      aria-label="One more serving"
+      disabled={servings >= 50}
+      onClick={() => setServings(servings + 1)}
+    >
+      +
+    </button>
+  </span>
+);
 
 const MealRow = ({ meal, onPreview, onEdit }) => {
   const { planMeal, removePlannedMeal, plannedMealFor, myProfile, profilesError, isFavorite, toggleFavorite, favoritedBy } = useList();
   const [note, setNote] = useState(null);
+  const [servings, setServings] = useState(meal.servings);
   const planned = plannedMealFor(meal.id);
   const canFavorite = Boolean(myProfile) && !profilesError;
   const favorite = canFavorite && isFavorite(meal.id);
@@ -44,8 +42,8 @@ const MealRow = ({ meal, onPreview, onEdit }) => {
 
   const handleAdd = () => {
     onPreview(meal);
-    const result = planMeal(meal);
-    setNote(result.alreadyPlanned ? 'Already on the list. Change the servings here.' : null);
+    const result = planMeal(meal, servings);
+    setNote(result.alreadyPlanned ? 'Already on the list.' : null);
   };
 
   return (
@@ -76,12 +74,16 @@ const MealRow = ({ meal, onPreview, onEdit }) => {
         </span>
       </button>
       <span className="menu-row__tools">
-        {planned && <ServingsStepper plannedMeal={planned} />}
+        {planned ? (
+          <span>added for {planned.servings}</span>
+        ) : (
+          <ServingsPicker meal={meal} servings={servings} setServings={setServings} />
+        )}
         {planned && (
           <button
             type="button"
             className="menu-row__link"
-            aria-label={`Remove ${meal.title} and its ingredients from the list`}
+            aria-label={`Remove ${meal.title} from the list (its items stay)`}
             onClick={() => {
               setNote(null);
               removePlannedMeal(planned);

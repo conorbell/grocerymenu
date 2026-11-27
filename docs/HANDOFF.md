@@ -110,15 +110,16 @@ docs/agents/                 skills config (issue tracker = .scratch/ markdown)
 **Data model** (terms in `GLOSSARY.md`, decisions in `docs/adr/`):
 `meals` = the Menu `{id, title, category, servings, recipe_url, photo_url, ingredients}`;
 `planned_meals` `{id, title, meal_id, servings}` = copies of Meals on the list
-(editing one never changes the other, ADR-0001; a Meal is planned at most once);
-`grocery_items` `{id, name, quantity, unit, checked, planned_meal_id}`,
-`planned_meal_id = null` → Extra item. Removing a planned meal removes its
-items (FK cascade). Checkout groups items by name+unit and sums quantities.
+(ADR-0001; a Meal is planned at most once; not editable once planned);
+`list_items` `{id, name, quantity, unit, checked, ever_ticked}` = Shopping list
+lines, one per name (any case) + unit. Planning a Meal adds onto matching lines;
+after that lines are independent of Planned meals, so removing one leaves its
+items (ADR-0003). `ever_ticked` makes "items ticked" count a line once.
 Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 
 ---
 
-## Supabase (all SQL already run, in this order)
+## Supabase (SQL run in this order)
 
 | File | Creates |
 |---|---|
@@ -129,6 +130,7 @@ Favourites are Meal ids. Everything lives in Supabase, live for both phones.
 | `rpg_class.sql` | `profiles.rpg_class` (picked class; null = Vagabond) |
 | `chat.sql` | `messages`, `chat_reads`, realtime |
 | `meals.sql` | `meals` + seed of the 11 originals, `planned_meals.meal_id/servings`, favourites → ids, `meals_created` stat, `meal-photos` bucket |
+| `list_items.sql` | renames `grocery_items` → `list_items`, drops `planned_meal_id`, adds `ever_ticked`, merges duplicate lines |
 
 - Two accounts exist. **Sign-ups are disabled**; add users in
   the dashboard (Authentication → Users → Add user, "Auto Confirm").
